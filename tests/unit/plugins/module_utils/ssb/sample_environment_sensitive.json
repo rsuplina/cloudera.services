@@ -1,0 +1,13 @@
+{
+    "name": "sample_environment",
+    "properties": {
+        "prop1": {
+            "value": "value1",
+            "sensitive": false
+        },
+        "prop2": {
+            "value": "value2",
+            "sensitive": true
+        }
+    }
+}

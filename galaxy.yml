@@ -1,0 +1,63 @@
+# Copyright 2026 Cloudera, Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+---
+
+namespace: cloudera
+name: services
+version: 1.0.0
+readme: README.md
+authors:
+- Webster Mudge <wmudge@cloudera.com>
+- Jim Enright <jenright@cloudera.com>
+- Ronald Suplina <rsuplina@cloudera.com>
+
+description: >
+  A set of modules and other resources that interact with the execution (compute and/or data
+  management) services and endpoints provided by Cloudera Data Platform (CDP) Public Cloud
+  and Private Cloud deployments.
+license:
+- Apache-2.0
+tags:
+- cloudera
+- cdp
+- atlas
+- ranger
+- cml
+- ssm
+- ssb
+- hive
+- impala
+- efm
+- nifi
+- schema_registry
+- kafka
+- flink
+
+dependencies: {}
+
+repository: https://github.com/cloudera-labs/cloudera.services
+documentation: https://cloudera-labs.github.io/cloudera.services
+homepage: https://github.com/cloudera-labs/cloudera.services
+issues: https://github.com/cloudera-labs/cloudera.services/issues
+
+build_ignore:
+  - ".*"
+  - "*.log"
+  - "*.tar.gz"
+  - docs
+  - docsbuild
+  - tests
+  - pytest.ini
+  - builder
