@@ -25,13 +25,12 @@ import pytest
 import sys
 import time
 
-from typing import Generator, Callable
 from http.cookiejar import CookieJar
 from kafka import KafkaAdminClient, KafkaProducer
 from kafka.admin import NewTopic
 from kafka.errors import TopicAlreadyExistsError, UnknownTopicOrPartitionError
 from pytest_mock import MockerFixture
-from typing import Any, Callable, Dict, Generator, List
+from typing import Any, Callable, Dict, Generator, List, Optional
 from unittest.mock import Mock
 
 from ansible.module_utils import basic
@@ -39,11 +38,6 @@ from ansible.module_utils.common.text.converters import to_bytes
 
 from ansible_collections.cloudera.services.plugins.module_utils.common import (
     AnsibleServicesClient,
-)
-from ansible_collections.cloudera.services.plugins.module_utils.ranger import (
-    RangerPolicy,
-    RangerPolicyClient,
-    RangerPolicyResource,
 )
 from ansible_collections.cloudera.services.plugins.module_utils.ssb import (
     SsbDataSource,
@@ -63,6 +57,28 @@ from ansible_collections.cloudera.services.plugins.module_utils.ssb import (
     SsbUdfClient,
     SsbUserClient,
     SsbUserKeytabClient,
+)
+from ansible_collections.cloudera.services.plugins.module_utils.ml import (
+    CmlServicesClient,
+    MlProject,
+    MlProjectClient,
+    MlJob,
+    MlJobClient,
+    MlJobRunClient,
+    MlModel,
+    MlModelClient,
+    MlModelBuild,
+    MlModelBuildClient,
+    MlModelDeployment,
+    MlModelDeploymentClient,
+    MlApplication,
+    MlApplicationClient,
+    MlFile,
+    MlProjectFileClient,
+    MlRuntimeClient,
+    MlRuntimeAddonClient,
+    MlRuntimeRepo,
+    MlRuntimeRepoClient,
 )
 from ansible_collections.cloudera.services.tests.unit import (
     AnsibleFailJson,
@@ -258,7 +274,7 @@ def smm_kafka_topic(
         "sasl_plain_username": env_context["SMM_KAFKA_USERNAME"],
         "sasl_plain_password": env_context["SMM_KAFKA_PASSWORD"],
         "ssl_cafile": env_context["SMM_KAFKA_SSL_CAFILE"],
-        "api_version_auto_timeout_ms": 30000,
+        # "api_version_auto_timeout_ms": 30000,
     }
 
     admin_client = KafkaAdminClient(
@@ -356,14 +372,14 @@ def ssb_rest_client(request) -> AnsibleServicesClient:
 
 
 @pytest.fixture(scope="module")
-def project_client(ssb_rest_client) -> SsbProjectClient:
+def ssb_project_client(ssb_rest_client) -> SsbProjectClient:
     """Fixture to create an SSBProjectClient instance."""
     return SsbProjectClient(api_client=ssb_rest_client)
 
 
 @pytest.fixture
 def purge_project(
-    project_client,
+    ssb_project_client,
 ) -> Generator[Callable[[SsbProject], SsbProject], None, None]:
     """Fixture to purge a test project after the test."""
     projects = []
@@ -377,24 +393,24 @@ def purge_project(
     # Clean up after the test
     for project in projects:
         try:
-            project_client.delete_project(project)
+            ssb_project_client.delete_project(project)
         except Exception as e:
             log.info(f"Failed to delete project {project.id} during cleanup: {str(e)}")
 
 
 @pytest.fixture(scope="module")
-def existing_project(request, project_client) -> Generator[SsbProject, None, None]:
+def existing_project(request, ssb_project_client) -> Generator[SsbProject, None, None]:
     """Fixture to create a module-scoped test project and clean it up after the test."""
     project_name = request.node.name.lower().rstrip(".py")
 
     # Clean up any existing test project
-    projects = project_client.list_projects()
+    projects = ssb_project_client.list_projects()
     for project in projects:
         if project.name == project_name:
-            project_client.delete_project(project)
+            ssb_project_client.delete_project(project)
 
     # Create the test project
-    project = project_client.create_project(
+    project = ssb_project_client.create_project(
         SsbProject(
             name=project_name,
             description="Existing project created by pytest",
@@ -405,7 +421,7 @@ def existing_project(request, project_client) -> Generator[SsbProject, None, Non
 
     # Clean up after the test (module scope, cannot use purge_project fixture)
     try:
-        project_client.delete_project(project)
+        ssb_project_client.delete_project(project)
     except Exception as e:
         log.info(f"Failed to delete project {project.id} during cleanup: {str(e)}")
 
@@ -413,20 +429,20 @@ def existing_project(request, project_client) -> Generator[SsbProject, None, Non
 @pytest.fixture()
 def deletable_project(
     request,
-    project_client,
+    ssb_project_client,
     purge_project,
 ) -> Generator[SsbProject, None, None]:
     """Fixture to create a function-scoped test project and clean it up after the test if needed."""
     project_name = request.node.name.lower().rstrip(".py")
 
     # Clean up any existing test project
-    projects = project_client.list_projects()
+    projects = ssb_project_client.list_projects()
     for project in projects:
         if project.name == project_name:
-            project_client.delete_project(project)
+            ssb_project_client.delete_project(project)
 
     # Create the test project
-    project = project_client.create_project(
+    project = ssb_project_client.create_project(
         SsbProject(
             name=project_name,
             description="Deletable project created by pytest",
@@ -725,13 +741,15 @@ def set_keytab(user_keytab_client, env_context) -> Generator[None, None, None]:
 
 
 @pytest.fixture(scope="module")
-def table_client(ssb_rest_client) -> SsbTableClient:
+def ssb_table_client(ssb_rest_client) -> SsbTableClient:
     """Fixture to create an SSBTableClient instance."""
     return SsbTableClient(api_client=ssb_rest_client)
 
 
 @pytest.fixture
-def purge_table(table_client) -> Generator[Callable[[SsbTable], SsbTable], None, None]:
+def purge_table(
+    ssb_table_client,
+) -> Generator[Callable[[SsbTable], SsbTable], None, None]:
     """Fixture to purge a test job after the test."""
     tables: List[SsbTable] = []
 
@@ -747,7 +765,7 @@ def purge_table(table_client) -> Generator[Callable[[SsbTable], SsbTable], None,
     # Clean up after the test
     for table in tables:
         try:
-            table_client.delete_table(table.project_id, table.id)
+            ssb_table_client.delete_table(table.project_id, table.id)
         except Exception as e:
             log.info(f"Failed to delete table {table.id} during cleanup: {str(e)}")
 
@@ -755,7 +773,7 @@ def purge_table(table_client) -> Generator[Callable[[SsbTable], SsbTable], None,
 @pytest.fixture
 def existing_table_kafka(
     request,
-    table_client,
+    ssb_table_client,
     existing_project,
     purge_table,
     existing_data_source_kafka,
@@ -766,18 +784,18 @@ def existing_table_kafka(
     table_name = request.node.name.lower()
 
     # Clean up any existing test tables with the same name
-    tables = table_client.list_tables(existing_project.id)
+    tables = ssb_table_client.list_tables(existing_project.id)
     for table in tables:
-        if table.name == table_name:
-            table_client.delete_table(table.project_id, table.id)
+        if table.table_name == table_name:
+            ssb_table_client.delete_table(table.project_id, table.id)
 
-    table = table_client.create_table(
+    table = ssb_table_client.create_table(
         project_id=existing_project.id,
         table=SsbTable(
             table_name=table_name,
             type="kafka",
             metadata={
-                "endpoint": existing_data_source_kafka.id,
+                "kafka_source_name": existing_data_source_kafka.name,
                 "format": "JSON",
                 "schema": json.dumps(existing_data_source_kafka_schema),
                 "topic": table_name,
@@ -926,20 +944,21 @@ def activated_deletable_environment(
 
 
 # ---------------------------------------------------------------------------
-# Ranger Fixtures
+# Cloudera Machine Learning (CML) Fixtures
 # ---------------------------------------------------------------------------
 
 
 @pytest.fixture(scope="module")
-def ranger_rest_client(request) -> AnsibleServicesClient:
+def ml_rest_client(request) -> CmlServicesClient:
     """
-    Fixture to create an AnsibleServicesClient instance for Ranger Admin.
+    Fixture to create a CmlServicesClient instance authenticated with a bearer token.
 
     It checks for the following required environment variables set at the module
     and skips tests if any are missing:
-    - RANGER_ADMIN_URL
-    - RANGER_ADMIN_USERNAME
-    - RANGER_ADMIN_PASSWORD
+    - CML_ENDPOINT
+    - CML_API_KEY
+
+    Optionally honors CML_VALIDATE_CERTS (default "true").
     """
     required_vars = getattr(request.module, "REQUIRED_ENV_VARS", [])
     missing = [var for var in required_vars if var not in os.environ]
@@ -948,101 +967,794 @@ def ranger_rest_client(request) -> AnsibleServicesClient:
 
     module = Mock()
     module.params = {}
-    module.fail_json = Mock(
-        side_effect=AnsibleFailJson({"msg": "fail_json called"}),
-    )
-    module.exit_json = Mock(
-        side_effect=AnsibleExitJson({"msg": "exit_json called"}),
-    )
+    module.fail_json = Mock(side_effect=AnsibleFailJson({"msg": "fail_json called"}))
+    module.exit_json = Mock(side_effect=AnsibleExitJson({"msg": "exit_json called"}))
 
     module.params.update(
         {
-            "url": os.environ["RANGER_ADMIN_URL"],
-            "url_username": os.environ["RANGER_ADMIN_USERNAME"],
-            "url_password": os.environ["RANGER_ADMIN_PASSWORD"],
-            "validate_certs": os.environ.get("RANGER_VALIDATE_CERTS", "false").lower()
+            "url": os.environ["CML_ENDPOINT"],
+            "api_key": os.environ["CML_API_KEY"],
+            "validate_certs": os.environ.get("CML_VALIDATE_CERTS", "true").lower()
             == "true",
-            "force_basic_auth": True,
         },
     )
 
-    # Create the AnsibleServicesClient instance
-    return AnsibleServicesClient(
-        module=module,
-        cookies=CookieJar(),
-    )
+    return CmlServicesClient(module=module, cookies=CookieJar())
 
 
 @pytest.fixture(scope="module")
-def policy_client(ranger_rest_client) -> RangerPolicyClient:
-    """Fixture to create a RangerPolicyClient instance."""
-    return RangerPolicyClient(api_client=ranger_rest_client)
-
-
-@pytest.fixture(scope="session")
-def test_service():
-    """Provide the name of a test Ranger service."""
-    # Use an environment variable or default to a common service name
-    return os.environ.get("RANGER_TEST_SERVICE", "cm_hdfs")
+def ml_project_client(ml_rest_client) -> MlProjectClient:
+    """Fixture to create an MlProjectClient instance."""
+    return MlProjectClient(api_client=ml_rest_client)
 
 
 @pytest.fixture(scope="module")
-def existing_policy(policy_client, test_service):
-    """Get an existing policy from the Ranger Admin for read-only tests."""
-    policies = policy_client.list_policies(service_name=test_service)
+def ml_job_client(ml_rest_client) -> MlJobClient:
+    """Fixture to create an MlJobClient instance."""
+    return MlJobClient(api_client=ml_rest_client)
 
-    if not policies:
-        pytest.skip(
-            f"No existing policies found in service '{test_service}'. "
-            "Cannot run tests that require an existing policy.",
-        )
 
-    # Return the first policy found
-    return policies[0]
+@pytest.fixture(scope="module")
+def ml_job_run_client(ml_rest_client) -> MlJobRunClient:
+    """Fixture to create an MlJobRunClient instance."""
+    return MlJobRunClient(api_client=ml_rest_client)
+
+
+@pytest.fixture(scope="module")
+def ml_model_client(ml_rest_client) -> MlModelClient:
+    """Fixture to create an MlModelClient instance."""
+    return MlModelClient(api_client=ml_rest_client)
+
+
+@pytest.fixture(scope="module")
+def ml_model_build_client(ml_rest_client) -> MlModelBuildClient:
+    """Fixture to create an MlModelBuildClient instance."""
+    return MlModelBuildClient(api_client=ml_rest_client)
+
+
+@pytest.fixture(scope="module")
+def ml_model_deployment_client(ml_rest_client) -> MlModelDeploymentClient:
+    """Fixture to create an MlModelDeploymentClient instance."""
+    return MlModelDeploymentClient(api_client=ml_rest_client)
+
+
+@pytest.fixture(scope="module")
+def ml_runtime_repo_client(ml_rest_client) -> MlRuntimeRepoClient:
+    """Fixture to create an MlRuntimeRepoClient instance."""
+    return MlRuntimeRepoClient(api_client=ml_rest_client)
 
 
 @pytest.fixture
-def deletable_policy(policy_client, test_service, purge_policy):
-    """Create a policy that can be deleted/modified in tests."""
-    policy = RangerPolicy(
-        name=f"ansible-test-deletable-{os.getpid()}",
-        service=test_service,
-        description="Temporary policy for testing - safe to delete",
-        resources={
-            "path": RangerPolicyResource(
-                values=[f"/tmp/ansible-test-{os.getpid()}"],
-                is_excludes=False,
-                is_recursive=False,
-            ),
-        },
+def purge_ml_runtime_repo(
+    ml_runtime_repo_client,
+) -> Generator[Callable[[MlRuntimeRepo], MlRuntimeRepo], None, None]:
+    """Factory fixture to register CML runtime repos for cleanup after the test."""
+    repos: List[MlRuntimeRepo] = []
+
+    def _add_repo(repo: MlRuntimeRepo) -> MlRuntimeRepo:
+        repos.append(repo)
+        return repo
+
+    yield _add_repo
+
+    for repo in repos:
+        try:
+            if isinstance(repo.id, int):
+                ml_runtime_repo_client.delete_runtime_repo(repo.id)
+        except Exception as e:
+            log.info(
+                f"Failed to delete runtime repo {repo.id} during cleanup: {str(e)}",
+            )
+
+
+@pytest.fixture(scope="module")
+def ml_application_client(ml_rest_client) -> MlApplicationClient:
+    """Fixture to create an MlApplicationClient instance."""
+    return MlApplicationClient(api_client=ml_rest_client)
+
+
+@pytest.fixture(scope="module")
+def ml_runtime_client(ml_rest_client) -> MlRuntimeClient:
+    """Fixture to create an MlRuntimeClient instance."""
+    return MlRuntimeClient(api_client=ml_rest_client)
+
+
+@pytest.fixture(scope="module")
+def ml_runtime_addon_client(ml_rest_client) -> MlRuntimeAddonClient:
+    """Fixture to create an MlRuntimeAddonClient instance."""
+    return MlRuntimeAddonClient(api_client=ml_rest_client)
+
+
+@pytest.fixture
+def purge_ml_project(
+    ml_project_client,
+) -> Generator[Callable[[MlProject], MlProject], None, None]:
+    """Factory fixture to register CML projects for cleanup after the test."""
+    projects: List[MlProject] = []
+
+    def _add_project(project: MlProject) -> MlProject:
+        projects.append(project)
+        return project
+
+    yield _add_project
+
+    # Clean up after the test
+    for project in projects:
+        try:
+            if isinstance(project.id, str):
+                ml_project_client.delete_project(project.id)
+        except Exception as e:
+            log.info(f"Failed to delete project {project.id} during cleanup: {str(e)}")
+
+
+@pytest.fixture(scope="module")
+def existing_ml_project(request, ml_project_client) -> Generator[MlProject, None, None]:
+    """Fixture to create a module-scoped CML project and clean it up afterwards."""
+    project_name = request.path.stem
+
+    # Clean up any existing test project with the same name. CML can 500 on
+    # project deletion during filesystem (VFS) cleanup, so tolerate leftovers
+    # rather than poisoning the run.
+    for project in ml_project_client.list_projects():
+        if project.name == project_name and isinstance(project.id, str):
+            try:
+                ml_project_client.delete_project(project.id)
+            except Exception as e:
+                log.info(
+                    f"Failed to delete pre-existing project {project.id}: {str(e)}",
+                )
+
+    project = ml_project_client.create_project(
+        MlProject(
+            name=project_name,
+            description="Existing project created by pytest",
+            template="blank",
+        ),
     )
 
-    created = policy_client.create_policy(policy)
+    yield project
+
+    # Clean up after the test (module scope, cannot use purge_ml_project fixture)
+    try:
+        if isinstance(project.id, str):
+            ml_project_client.delete_project(project.id)
+    except Exception as e:
+        log.info(f"Failed to delete project {project.id} during cleanup: {str(e)}")
+
+
+@pytest.fixture()
+def deletable_ml_project(
+    request,
+    ml_project_client,
+    purge_ml_project,
+) -> Generator[MlProject, None, None]:
+    """Fixture to create a function-scoped CML project and clean it up if needed."""
+    project_name = f"ansible-ml-int-{request.node.name.lower()}"[:100]
+
+    # Clean up any existing test project with the same name
+    for project in ml_project_client.list_projects():
+        if project.name == project_name and isinstance(project.id, str):
+            ml_project_client.delete_project(project.id)
+
+    project = ml_project_client.create_project(
+        MlProject(
+            name=project_name,
+            description="Deletable project created by pytest",
+            template="blank",
+        ),
+    )
 
     # Register for deletion after test
-    purge_policy(created)
+    purge_ml_project(project)
 
-    yield created
+    yield project
+
+
+def _ml_subdomain(value: str) -> str:
+    """Build a valid CML application subdomain from an arbitrary string."""
+    out = "".join(c if c.isalnum() else "-" for c in value.lower())
+    while "--" in out:
+        out = out.replace("--", "-")
+    return out.strip("-")[:63].strip("-") or "app"
+
+
+@pytest.fixture(scope="module")
+def ml_runtime_identifier(ml_runtime_client) -> str:
+    """Fixture to discover an available CML runtime image identifier."""
+    runtimes = ml_runtime_client.list_runtimes()
+    for runtime in runtimes:
+        if isinstance(runtime.image_identifier, str):
+            return runtime.image_identifier
+    pytest.skip("No CML runtime image identifier available")
+
+
+@pytest.fixture(scope="module")
+def ml_model_runtime_identifier(ml_runtime_client) -> str:
+    """Discover a model-serving-capable CML runtime image identifier.
+
+    Model builds require a PBJ Workbench Python runtime; JupyterLab/notebook
+    runtimes are not deployable as models and cause the build to fail.
+    """
+    runtimes = ml_runtime_client.list_runtimes()
+
+    def _pick(predicate) -> Optional[str]:
+        for r in runtimes:
+            if isinstance(r.image_identifier, str) and predicate(r):
+                return r.image_identifier
+        return None
+
+    identifier = _pick(
+        lambda r: r.editor == "PBJ Workbench"
+        and r.edition == "Standard"
+        and "Python" in str(r.kernel or ""),
+    ) or _pick(
+        lambda r: r.editor == "PBJ Workbench" and "Python" in str(r.kernel or ""),
+    )
+    if identifier is None:
+        pytest.skip("No PBJ Workbench Python runtime available for model builds")
+    return identifier
 
 
 @pytest.fixture
-def purge_policy(
-    policy_client,
-) -> Generator[Callable[[RangerPolicy], RangerPolicy], None, None]:
-    """Factory fixture to register policies for cleanup."""
-    policies_to_delete = []
+def purge_ml_application(
+    ml_application_client,
+) -> Generator[Callable[[str, MlApplication], MlApplication], None, None]:
+    """Factory fixture to register CML applications for cleanup after the test."""
+    applications: List[tuple] = []
 
-    def _register(policy: RangerPolicy) -> RangerPolicy:
-        """Register a policy for cleanup."""
-        if policy and hasattr(policy, "id") and policy.id:
-            policies_to_delete.append(policy.id)
-        return policy
+    def _add_application(project_id: str, application: MlApplication) -> MlApplication:
+        applications.append((project_id, application))
+        return application
 
-    yield _register
+    yield _add_application
 
-    # Cleanup: Delete all registered policies
-    for policy_id in policies_to_delete:
+    # Clean up after the test
+    for project_id, application in applications:
         try:
-            policy_client.delete_policy_by_id(policy_id)
+            if isinstance(application.id, str):
+                ml_application_client.delete_application(project_id, application.id)
         except Exception as e:
-            log.info(f"Failed to delete policy {policy_id} during cleanup: {str(e)}")
+            log.info(
+                f"Failed to delete application {application.id} during cleanup: {str(e)}",
+            )
+
+
+@pytest.fixture(scope="module")
+def existing_ml_application(
+    existing_ml_project,
+    ml_application_client,
+    ml_runtime_identifier,
+    ml_project_script,
+) -> Generator[MlApplication, None, None]:
+    """Fixture to create a module-scoped CML application and clean it up afterwards."""
+    name = "existing-app"
+    # Subdomains are unique across the workspace, so derive from the per-run
+    # project id to avoid colliding with leftovers from earlier runs.
+    subdomain = _ml_subdomain(f"existing-{existing_ml_project.id}")
+
+    # Clean up any existing test application with the same name
+    for app in ml_application_client.list_applications(existing_ml_project.id):
+        if app.name == name and isinstance(app.id, str):
+            ml_application_client.delete_application(existing_ml_project.id, app.id)
+
+    application = ml_application_client.create_application(
+        existing_ml_project.id,
+        MlApplication(
+            name=name,
+            subdomain=subdomain,
+            script=ml_project_script,
+            runtime_identifier=ml_runtime_identifier,
+        ),
+    )
+
+    yield application
+
+    # Clean up after the test (module scope, cannot use purge_ml_application fixture)
+    try:
+        if isinstance(application.id, str):
+            ml_application_client.delete_application(
+                existing_ml_project.id,
+                application.id,
+            )
+    except Exception as e:
+        log.info(
+            f"Failed to delete application {application.id} during cleanup: {str(e)}",
+        )
+
+
+@pytest.fixture()
+def deletable_ml_application(
+    request,
+    existing_ml_project,
+    ml_application_client,
+    ml_runtime_identifier,
+    ml_project_script,
+    purge_ml_application,
+) -> Generator[MlApplication, None, None]:
+    """Fixture to create a function-scoped CML application and clean it up if needed."""
+    name = f"del-{request.node.name.lower()}"[:100]
+    # Subdomains are unique across the workspace; include the per-run project id.
+    subdomain = _ml_subdomain(f"{request.node.name}-{existing_ml_project.id}")
+
+    # Clean up any existing test application with the same name
+    for app in ml_application_client.list_applications(existing_ml_project.id):
+        if app.name == name and isinstance(app.id, str):
+            ml_application_client.delete_application(existing_ml_project.id, app.id)
+
+    application = ml_application_client.create_application(
+        existing_ml_project.id,
+        MlApplication(
+            name=name,
+            subdomain=subdomain,
+            script=ml_project_script,
+            runtime_identifier=ml_runtime_identifier,
+        ),
+    )
+
+    # Register for deletion after test
+    purge_ml_application(existing_ml_project.id, application)
+
+    yield application
+
+
+@pytest.fixture
+def purge_ml_job(
+    ml_job_client,
+) -> Generator[Callable[[str, MlJob], MlJob], None, None]:
+    """Factory fixture to register CML jobs for cleanup after the test."""
+    jobs: List[tuple] = []
+
+    def _add_job(project_id: str, job: MlJob) -> MlJob:
+        jobs.append((project_id, job))
+        return job
+
+    yield _add_job
+
+    # Clean up after the test
+    for project_id, job in jobs:
+        try:
+            if isinstance(job.id, str):
+                ml_job_client.delete_job(project_id, job.id)
+        except Exception as e:
+            log.info(f"Failed to delete job {job.id} during cleanup: {str(e)}")
+
+
+@pytest.fixture(scope="module")
+def existing_ml_job(
+    existing_ml_project,
+    ml_job_client,
+    ml_runtime_identifier,
+    ml_project_script,
+) -> Generator[MlJob, None, None]:
+    """Fixture to create a module-scoped CML job and clean it up afterwards."""
+    name = "existing-job"
+
+    # Clean up any existing test job with the same name
+    for job in ml_job_client.list_jobs(existing_ml_project.id):
+        if job.name == name and isinstance(job.id, str):
+            ml_job_client.delete_job(existing_ml_project.id, job.id)
+
+    job = ml_job_client.create_job(
+        existing_ml_project.id,
+        MlJob(
+            name=name,
+            script=ml_project_script,
+            runtime_identifier=ml_runtime_identifier,
+        ),
+    )
+
+    yield job
+
+    # Clean up after the test (module scope, cannot use purge_ml_job fixture)
+    try:
+        if isinstance(job.id, str):
+            ml_job_client.delete_job(existing_ml_project.id, job.id)
+    except Exception as e:
+        log.info(f"Failed to delete job {job.id} during cleanup: {str(e)}")
+
+
+@pytest.fixture()
+def deletable_ml_job(
+    request,
+    existing_ml_project,
+    ml_job_client,
+    ml_runtime_identifier,
+    ml_project_script,
+    purge_ml_job,
+) -> Generator[MlJob, None, None]:
+    """Fixture to create a function-scoped CML job and clean it up if needed."""
+    name = f"del-{request.node.name.lower()}"[:100]
+
+    # Clean up any existing test job with the same name
+    for job in ml_job_client.list_jobs(existing_ml_project.id):
+        if job.name == name and isinstance(job.id, str):
+            ml_job_client.delete_job(existing_ml_project.id, job.id)
+
+    job = ml_job_client.create_job(
+        existing_ml_project.id,
+        MlJob(
+            name=name,
+            script=ml_project_script,
+            runtime_identifier=ml_runtime_identifier,
+        ),
+    )
+
+    # Register for deletion after test
+    purge_ml_job(existing_ml_project.id, job)
+
+    yield job
+
+
+@pytest.fixture
+def purge_ml_model(
+    ml_model_client,
+) -> Generator[Callable[[str, MlModel], MlModel], None, None]:
+    """Factory fixture to register CML models for cleanup after the test."""
+    models: List[tuple] = []
+
+    def _add_model(project_id: str, model: MlModel) -> MlModel:
+        models.append((project_id, model))
+        return model
+
+    yield _add_model
+
+    # Clean up after the test
+    for project_id, model in models:
+        try:
+            if isinstance(model.id, str):
+                ml_model_client.delete_model(project_id, model.id)
+        except Exception as e:
+            log.info(f"Failed to delete model {model.id} during cleanup: {str(e)}")
+
+
+@pytest.fixture(scope="module")
+def existing_ml_model(
+    existing_ml_project,
+    ml_model_client,
+) -> Generator[MlModel, None, None]:
+    """Fixture to create a module-scoped CML model and clean it up afterwards."""
+    name = "existing-model"
+
+    # Clean up any existing test model with the same name
+    for model in ml_model_client.list_models(existing_ml_project.id):
+        if model.name == name and isinstance(model.id, str):
+            ml_model_client.delete_model(existing_ml_project.id, model.id)
+
+    model = ml_model_client.create_model(
+        existing_ml_project.id,
+        MlModel(
+            name=name,
+            description="An existing model for integration tests.",
+        ),
+    )
+
+    yield model
+
+    # Clean up after the test (module scope, cannot use purge_ml_model fixture)
+    try:
+        if isinstance(model.id, str):
+            ml_model_client.delete_model(existing_ml_project.id, model.id)
+    except Exception as e:
+        log.info(f"Failed to delete model {model.id} during cleanup: {str(e)}")
+
+
+@pytest.fixture()
+def deletable_ml_model(
+    request,
+    existing_ml_project,
+    ml_model_client,
+    purge_ml_model,
+) -> Generator[MlModel, None, None]:
+    """Fixture to create a function-scoped CML model and clean it up if needed."""
+    name = f"del-{request.node.name.lower()}"[:100]
+
+    # Clean up any existing test model with the same name
+    for model in ml_model_client.list_models(existing_ml_project.id):
+        if model.name == name and isinstance(model.id, str):
+            ml_model_client.delete_model(existing_ml_project.id, model.id)
+
+    model = ml_model_client.create_model(
+        existing_ml_project.id,
+        MlModel(
+            name=name,
+            description="A deletable model for integration tests.",
+        ),
+    )
+
+    # Register for deletion after test
+    purge_ml_model(existing_ml_project.id, model)
+
+    yield model
+
+
+@pytest.fixture
+def purge_ml_model_build(
+    ml_model_build_client,
+) -> Generator[Callable[[str, str, MlModelBuild], MlModelBuild], None, None]:
+    """Factory fixture to register CML model builds for cleanup after the test."""
+    builds: List[tuple] = []
+
+    def _add_build(project_id: str, model_id: str, build: MlModelBuild) -> MlModelBuild:
+        builds.append((project_id, model_id, build))
+        return build
+
+    yield _add_build
+
+    # Clean up after the test
+    for project_id, model_id, build in builds:
+        try:
+            if isinstance(build.id, str):
+                ml_model_build_client.delete_build(project_id, model_id, build.id)
+        except Exception as e:
+            log.info(f"Failed to delete build {build.id} during cleanup: {str(e)}")
+
+
+@pytest.fixture(scope="module")
+def existing_ml_model_build(
+    existing_ml_project,
+    existing_ml_model,
+    ml_model_build_client,
+    ml_runtime_identifier,
+    ml_project_script,
+) -> Generator[MlModelBuild, None, None]:
+    """Fixture to create a module-scoped CML model build and clean it up afterwards."""
+    build = ml_model_build_client.create_build(
+        existing_ml_project.id,
+        existing_ml_model.id,
+        MlModelBuild(
+            file_path=ml_project_script,
+            function_name="predict",
+            runtime_identifier=ml_runtime_identifier,
+            comment="existing-build",
+        ),
+    )
+
+    yield build
+
+    # Clean up after the test (module scope, cannot use purge_ml_model_build fixture)
+    try:
+        if isinstance(build.id, str):
+            ml_model_build_client.delete_build(
+                existing_ml_project.id,
+                existing_ml_model.id,
+                build.id,
+            )
+    except Exception as e:
+        log.info(f"Failed to delete build {build.id} during cleanup: {str(e)}")
+
+
+@pytest.fixture()
+def deletable_ml_model_build(
+    existing_ml_project,
+    existing_ml_model,
+    ml_model_build_client,
+    ml_runtime_identifier,
+    ml_project_script,
+    purge_ml_model_build,
+) -> Generator[MlModelBuild, None, None]:
+    """Fixture to create a function-scoped CML model build and clean it up if needed."""
+    build = ml_model_build_client.create_build(
+        existing_ml_project.id,
+        existing_ml_model.id,
+        MlModelBuild(
+            file_path=ml_project_script,
+            function_name="predict",
+            runtime_identifier=ml_runtime_identifier,
+            comment="deletable-build",
+        ),
+    )
+
+    # Register for deletion after test
+    purge_ml_model_build(existing_ml_project.id, existing_ml_model.id, build)
+
+    yield build
+
+
+@pytest.fixture(scope="module")
+def ml_project_file_client(ml_rest_client) -> MlProjectFileClient:
+    """Fixture to create an MlProjectFileClient instance."""
+    return MlProjectFileClient(api_client=ml_rest_client)
+
+
+@pytest.fixture
+def purge_ml_file(
+    ml_project_file_client,
+) -> Generator[Callable[[str, str], str], None, None]:
+    """Factory fixture to register CML project files for cleanup after the test."""
+    files: List[tuple] = []
+
+    def _add_file(project_id: str, path: str) -> str:
+        files.append((project_id, path))
+        return path
+
+    yield _add_file
+
+    # Clean up after the test
+    for project_id, path in files:
+        try:
+            ml_project_file_client.delete_file(project_id, path)
+        except Exception as e:
+            log.info(f"Failed to delete file {path} during cleanup: {str(e)}")
+
+
+@pytest.fixture(scope="module")
+def existing_ml_file(
+    existing_ml_project,
+    ml_project_file_client,
+) -> Generator[MlFile, None, None]:
+    """Fixture to upload a module-scoped project file and clean it up afterwards."""
+    path = "pytest-existing.py"
+    ml_project_file_client.upload_file(
+        existing_ml_project.id,
+        path,
+        content="# created by pytest\nprint('existing')\n",
+    )
+
+    yield MlFile(path=path)
+
+    try:
+        ml_project_file_client.delete_file(existing_ml_project.id, path)
+    except Exception as e:
+        log.info(f"Failed to delete file {path} during cleanup: {str(e)}")
+
+
+@pytest.fixture(scope="module")
+def ml_project_script(
+    existing_ml_project,
+    ml_project_file_client,
+) -> Generator[str, None, None]:
+    """Fixture ensuring an entrypoint script exists in the project for applications.
+
+    CML rejects application creation when the entrypoint script is not a real
+    file within the project, so applications must seed this first. The file is
+    removed on teardown (before the enclosing project is deleted) to keep the
+    project filesystem clean for deletion.
+    """
+    path = "app.py"
+    ml_project_file_client.upload_file(
+        existing_ml_project.id,
+        path,
+        content="# created by pytest\nprint('app')\n",
+    )
+
+    yield path
+
+    try:
+        ml_project_file_client.delete_file(existing_ml_project.id, path)
+    except Exception as e:
+        log.info(f"Failed to delete script {path} during cleanup: {str(e)}")
+
+
+@pytest.fixture(scope="module")
+def ml_model_script(
+    existing_ml_project,
+    ml_project_file_client,
+) -> Generator[str, None, None]:
+    """Fixture seeding a servable model script (with a ``predict`` function).
+
+    A model build compiles this file into a servable artifact, so the entrypoint
+    function must exist for the build to succeed and be deployable.
+    """
+    path = "model.py"
+    ml_project_file_client.upload_file(
+        existing_ml_project.id,
+        path,
+        content=(
+            "# created by pytest\n"
+            "def predict(args):\n"
+            "    return {'result': args}\n"
+        ),
+    )
+
+    yield path
+
+    try:
+        ml_project_file_client.delete_file(existing_ml_project.id, path)
+    except Exception as e:
+        log.info(f"Failed to delete script {path} during cleanup: {str(e)}")
+
+
+# Terminal CML model build statuses.
+_ML_BUILD_SUCCESS = {"built", "succeeded"}
+_ML_BUILD_FAILURE = {"build failed", "timedout", "unknown"}
+
+
+@pytest.fixture(scope="module")
+def built_ml_model_build(
+    existing_ml_project,
+    existing_ml_model,
+    ml_model_build_client,
+    ml_model_runtime_identifier,
+    ml_model_script,
+) -> Generator[MlModelBuild, None, None]:
+    """Create a model build and block until it finishes building.
+
+    Model builds compile and push a container image asynchronously (the
+    C(pushing) phase alone can take several minutes), so tests that need a
+    deployable build must wait for a terminal status. Tune the poll ceiling with
+    the C(CML_BUILD_TIMEOUT) env var (seconds; default 1200). Marked implicitly
+    slow via the consuming test.
+    """
+    build = ml_model_build_client.create_build(
+        existing_ml_project.id,
+        existing_ml_model.id,
+        MlModelBuild(
+            file_path=ml_model_script,
+            function_name="predict",
+            runtime_identifier=ml_model_runtime_identifier,
+            comment="built-build",
+        ),
+    )
+
+    timeout = int(os.getenv("CML_BUILD_TIMEOUT", "1200"))
+    interval = int(os.getenv("CML_BUILD_POLL_INTERVAL", "15"))
+    deadline = time.monotonic() + timeout
+    status = build.status
+    while time.monotonic() < deadline:
+        current = ml_model_build_client.describe_build(
+            existing_ml_project.id,
+            existing_ml_model.id,
+            build.id,
+        )
+        status = current.status if current else status
+        if status in _ML_BUILD_SUCCESS:
+            build = current
+            break
+        if status in _ML_BUILD_FAILURE:
+            pytest.fail(f"Model build {build.id} ended in status '{status}'")
+        time.sleep(interval)
+    else:
+        pytest.fail(
+            f"Model build {build.id} did not finish within {timeout}s "
+            f"(last status '{status}')",
+        )
+
+    yield build
+
+    try:
+        if isinstance(build.id, str):
+            ml_model_build_client.delete_build(
+                existing_ml_project.id,
+                existing_ml_model.id,
+                build.id,
+            )
+    except Exception as e:
+        log.info(f"Failed to delete build {build.id} during cleanup: {str(e)}")
+
+
+@pytest.fixture
+def purge_ml_model_deployment(
+    ml_model_deployment_client,
+) -> Generator[
+    Callable[[str, str, str, MlModelDeployment], MlModelDeployment],
+    None,
+    None,
+]:
+    """Factory fixture to register CML model deployments for cleanup after the test."""
+    deployments: List[tuple] = []
+
+    def _add_deployment(
+        project_id: str,
+        model_id: str,
+        build_id: str,
+        deployment: MlModelDeployment,
+    ) -> MlModelDeployment:
+        deployments.append((project_id, model_id, build_id, deployment))
+        return deployment
+
+    yield _add_deployment
+
+    # Clean up after the test: stop then delete (best effort).
+    for project_id, model_id, build_id, deployment in deployments:
+        if not isinstance(deployment.id, str):
+            continue
+        for action in (
+            ml_model_deployment_client.stop_deployment,
+            ml_model_deployment_client.delete_deployment,
+        ):
+            try:
+                action(project_id, model_id, build_id, deployment.id)
+            except Exception as e:
+                log.info(
+                    f"Failed to {action.__name__} {deployment.id} during cleanup: {str(e)}",
+                )
