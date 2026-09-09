@@ -58,6 +58,10 @@ from ansible_collections.cloudera.services.plugins.module_utils.ssb import (
     SsbUserClient,
     SsbUserKeytabClient,
 )
+from ansible_collections.cloudera.services.plugins.module_utils.ranger import (
+    RangerService,
+    RangerServiceClient,
+)
 from ansible_collections.cloudera.services.plugins.module_utils.ml import (
     CmlServicesClient,
     MlProject,
@@ -1758,3 +1762,156 @@ def purge_ml_model_deployment(
                 log.info(
                     f"Failed to {action.__name__} {deployment.id} during cleanup: {str(e)}",
                 )
+
+
+# ---------------------------------------------------------------------------
+# Ranger Fixtures
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def ranger_rest_client(request) -> AnsibleServicesClient:
+    """
+    Fixture to create an AnsibleServicesClient instance for the Ranger Admin
+    endpoint. This fixture's Ansible module is used for set up and teardown of
+    Ranger test resources (module-scope).
+
+    Ranger authenticates with HTTP basic auth, which fetch_url performs natively
+    from the url_username / url_password / force_basic_auth module parameters.
+
+    It checks for the following required environment variables set at the module
+    and skips tests if any are missing:
+    - RANGER_API_URL
+    - RANGER_API_USERNAME
+    - RANGER_API_PASSWORD
+    """
+    required_vars = getattr(request.module, "REQUIRED_ENV_VARS", [])
+    missing = [var for var in required_vars if var not in os.environ]
+    if missing:
+        pytest.skip(f"Missing env vars: {', '.join(missing)}")
+
+    module = Mock()
+    module.params = {}
+    module.fail_json = Mock(
+        side_effect=AnsibleFailJson({"msg": "fail_json called"}),
+    )
+    module.exit_json = Mock(
+        side_effect=AnsibleExitJson({"msg": "exit_json called"}),
+    )
+
+    module.params.update(
+        {
+            "url": os.environ["RANGER_API_URL"],
+            "url_username": os.environ["RANGER_API_USERNAME"],
+            "url_password": os.environ["RANGER_API_PASSWORD"],
+            "validate_certs": os.environ.get("RANGER_VALIDATE_CERTS", "false").lower()
+            == "true",
+        },
+    )
+
+    # Create the AnsibleServicesClient instance
+    return AnsibleServicesClient(
+        module=module,
+        cookies=CookieJar(),
+    )
+
+
+@pytest.fixture(scope="module")
+def ranger_service_client(ranger_rest_client) -> RangerServiceClient:
+    """Fixture to create a RangerServiceClient instance."""
+    return RangerServiceClient(api_client=ranger_rest_client)
+
+
+@pytest.fixture(scope="session")
+def test_service_type() -> str:
+    """Provide the Ranger service type used to create test services.
+
+    Defaults to ``tag``, a built-in Ranger service definition that has no
+    required connection configs, so test services can be created without any
+    external backend. Override with RANGER_TEST_SERVICE_TYPE (e.g. ``hdfs``).
+    """
+    return os.environ.get("RANGER_TEST_SERVICE_TYPE", "tag")
+
+
+@pytest.fixture
+def purge_service(
+    ranger_service_client,
+) -> Generator[Callable[[RangerService], RangerService], None, None]:
+    """Factory fixture to register services for cleanup after the test."""
+    service_ids: List[int] = []
+
+    def _register(service: RangerService) -> RangerService:
+        if service and getattr(service, "id", None):
+            service_ids.append(service.id)
+        return service
+
+    yield _register
+
+    # Clean up after the test
+    for service_id in service_ids:
+        try:
+            ranger_service_client.delete_service_by_id(service_id)
+        except Exception as e:
+            log.info(
+                f"Failed to delete service {service_id} during cleanup: {str(e)}",
+            )
+
+
+@pytest.fixture(scope="module")
+def existing_service(
+    request,
+    ranger_service_client,
+    test_service_type,
+) -> Generator[RangerService, None, None]:
+    """Fixture to create a module-scoped test service for read-only tests."""
+    service_name = f"ansible-test-existing-{os.getpid()}"
+
+    # Clean up any existing test service with the same name
+    stale = ranger_service_client.get_service_by_name(service_name)
+    if stale is not None:
+        ranger_service_client.delete_service_by_id(stale.id)
+
+    service = ranger_service_client.create_service(
+        RangerService(
+            name=service_name,
+            type=test_service_type,
+            description="Existing service created by pytest",
+        ),
+    )
+
+    yield service
+
+    # Clean up after the test (module scope, cannot use purge_service fixture)
+    try:
+        ranger_service_client.delete_service_by_id(service.id)
+    except Exception as e:
+        log.info(f"Failed to delete service {service.id} during cleanup: {str(e)}")
+
+
+@pytest.fixture
+def deletable_service(
+    request,
+    ranger_service_client,
+    test_service_type,
+    purge_service,
+) -> Generator[RangerService, None, None]:
+    """Fixture to create a function-scoped test service that can be modified or deleted."""
+    service_name = f"ansible-test-deletable-{os.getpid()}"
+
+    # Clean up any existing test service with the same name
+    stale = ranger_service_client.get_service_by_name(service_name)
+    if stale is not None:
+        ranger_service_client.delete_service_by_id(stale.id)
+
+    service = ranger_service_client.create_service(
+        RangerService(
+            name=service_name,
+            type=test_service_type,
+            description="Deletable service created by pytest - safe to delete",
+        ),
+    )
+
+    # Register for deletion after test
+    purge_service(service)
+
+    yield service
