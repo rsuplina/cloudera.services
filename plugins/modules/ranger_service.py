@@ -77,6 +77,8 @@ attributes:
     support: full
   diff_mode:
     support: full
+  platform:
+    platforms: all
 """
 
 EXAMPLES = r"""
