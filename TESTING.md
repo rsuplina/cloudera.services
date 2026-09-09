@@ -20,9 +20,9 @@ _For Cloudera SQL Streams Builder_
 
 _For Apache Ranger_
 
-- `RANGER_ADMIN_URL`
-- `RANGER_ADMIN_USERNAME`
-- `RANGER_ADMIN_PASSWORD`
+- `RANGER_API_URL`
+- `RANGER_API_USERNAME`
+- `RANGER_API_PASSWORD`
 
 _For Cloudera AI_
 
