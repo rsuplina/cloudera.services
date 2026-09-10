@@ -88,7 +88,7 @@ def test_ranger_service_module_create(
     purge_service(created)
 
     assert created is not None
-    assert created.description == "Created by module integration test"
+    assert created.display_name == service_name
 
 
 def test_ranger_service_module_create_check_mode(
