@@ -275,7 +275,6 @@ class RangerServiceModule(ServicesModule):
             if not existing:
                 incoming = build_service_from_params(
                     extract_service_params(self),
-                    none_as_nullable=True,
                 )
 
                 self.changed = True
@@ -297,7 +296,6 @@ class RangerServiceModule(ServicesModule):
                 incoming = build_service_from_params(
                     extract_service_params(self),
                     existing=existing,
-                    none_as_nullable=False,
                 )
 
                 prev_config, next_config = diff_dict(existing, incoming)

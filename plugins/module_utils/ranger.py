@@ -235,19 +235,17 @@ def extract_service_params(module_instance) -> Dict[str, Any]:
 def build_service_from_params(
     params: Dict[str, Any],
     existing: Optional[RangerService] = None,
-    none_as_nullable: bool = True,
 ) -> RangerService:
     """Build a RangerService from module parameters.
 
-    If none_as_nullable is False, None values fall back to `existing` instead of NULLABLE.
+    If `existing` is provided, None values fall back to its current values
+    instead of NULLABLE.
     """
 
     def _get_value(key: str, default=NULLABLE):
         value = params.get(key)
         if value is not None:
             return value
-        if none_as_nullable:
-            return default
         if existing is not None:
             return getattr(existing, key, default)
         return default
