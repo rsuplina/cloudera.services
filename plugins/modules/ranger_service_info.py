@@ -22,6 +22,7 @@ description:
   - Retrieve details of a specific service by ID or name.
   - If no identifier is provided, retrieves all services.
   - The module supports C(check_mode).
+version_added: "1.1.0"
 author:
   - "Ronald Suplina (@rsuplina)"
 options:
@@ -42,6 +43,8 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+# NOTE: Examples do not include connection and authentication fields
+
 - name: Retrieve service by ID
   cloudera.services.ranger_service_info:
     id: 5

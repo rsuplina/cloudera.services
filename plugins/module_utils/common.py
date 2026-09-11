@@ -138,6 +138,102 @@ def to_dict(instance: Any) -> Dict[str, Any]:
     raise TypeError(f"Expected dataclass type, got {type(instance)}")
 
 
+def overlay(
+    base: T,
+    override: T,
+    mutation_fields: Optional[List[str]] = None,
+) -> T:
+    """
+    Overlay the set fields of `override` onto `base`, returning a new instance.
+
+    A field is applied only when its value in `override` is not the NULLABLE
+    sentinel. When `mutation_fields` is given, only those field names are
+    considered from `override`; every other field is taken from `base`
+    unchanged (this is how read-only fields such as id/guid/version are
+    preserved during an update).
+
+    Args:
+        base: The dataclass instance to start from.
+        override: A dataclass instance of the same type whose set (non-NULLABLE)
+            fields are layered onto the base.
+        mutation_fields: Optional whitelist of field names eligible for override.
+
+    Returns:
+        A new dataclass instance of the same type as `base`.
+
+    Raises:
+        TypeError: If either argument is not a dataclass instance, or the two
+            are of different types.
+    """
+    if not is_dataclass(base) or isinstance(base, type):
+        raise TypeError(f"Expected dataclass instance for base, got {type(base)}")
+
+    if not is_dataclass(override) or isinstance(override, type):
+        raise TypeError(
+            f"Expected dataclass instance for override, got {type(override)}",
+        )
+
+    if type(base) != type(override):
+        raise TypeError(
+            f"Cannot overlay different dataclass types: {type(base)} vs {type(override)}",
+        )
+
+    merged = to_dict(base)
+    for key, value in to_dict(override).items():
+        if mutation_fields is not None and key not in mutation_fields:
+            continue
+        if value is not NULLABLE:
+            merged[key] = value
+
+    return from_dict(type(base), merged)
+
+
+def build_from_params(
+    cls: Type[T],
+    params: Dict[str, Any],
+    mutation_fields: Optional[List[str]] = None,
+    existing: Optional[T] = None,
+) -> T:
+    """
+    Build a dataclass instance from Ansible module parameters.
+
+    Each name in `mutation_fields` is read from `params`; an unset (None) value
+    becomes the NULLABLE sentinel so it is omitted from serialised requests. When
+    `mutation_fields` is not given, it defaults to the keys of the dataclass's
+    ``argument_spec()`` classmethod (the collection convention for the mutable
+    fields).
+
+    When `existing` is provided, its values (including read-only fields such as
+    id/guid/version) form the base and unset params fall back to the existing
+    instance rather than being cleared; otherwise a fresh instance carrying only
+    the set params is returned.
+
+    Args:
+        cls: The dataclass type to construct.
+        params: Mapping of field name to value (typically module parameters).
+        mutation_fields: Optional whitelist of mutable field names. Defaults to
+            the keys of ``cls.argument_spec()``.
+        existing: Optional current instance to overlay the set params onto.
+
+    Returns:
+        A new instance of `cls`.
+    """
+    if mutation_fields is None:
+        mutation_fields = list(cls.argument_spec().keys())  # type: ignore[attr-defined]
+
+    override = cls(
+        **{
+            key: params[key] if params.get(key) is not None else NULLABLE
+            for key in mutation_fields
+        },
+    )
+
+    if existing is None:
+        return override
+
+    return overlay(existing, override, mutation_fields=mutation_fields)
+
+
 def diff_dict(
     prev: Any,
     next: Any,

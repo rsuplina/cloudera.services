@@ -20,10 +20,9 @@ module: ranger_service
 short_description: Manage services in Apache Ranger
 description:
   - Create, update, or delete services in Apache Ranger.
-  - If the service does not exist and O(state=present), the service will be created.
-  - If the service exists and O(state=absent), the service will be deleted.
 author:
   - "Ronald Suplina (@rsuplina)"
+version_added: "1.1.0"
 options:
   name:
     description:
@@ -70,6 +69,8 @@ options:
     required: false
     default: present
     choices: ["present", "absent"]
+requirements:
+  - The O(name) option is required when O(state) is V(present) or V(absent).
 extends_documentation_fragment:
   - cloudera.services.services_client
 attributes:
@@ -86,6 +87,8 @@ attributes:
 """
 
 EXAMPLES = r"""
+# NOTE: Examples do not include connection and authentication fields
+
 - name: Create a Ranger service
   cloudera.services.ranger_service:
     name: "test02"
@@ -206,13 +209,13 @@ from typing import Any, Dict, Optional
 
 from ansible_collections.cloudera.services.plugins.module_utils.common import (
     ServicesModule,
+    build_from_params,
     diff_dict,
     to_dict,
 )
 from ansible_collections.cloudera.services.plugins.module_utils.ranger import (
     RangerService,
     RangerServiceClient,
-    build_service_from_params,
     extract_service_params,
 )
 
@@ -262,30 +265,22 @@ class RangerServiceModule(ServicesModule):
                 self.changed = True
 
                 if self.module._diff:
-                    before_dict, _after_dict = diff_dict(
-                        existing,
-                        RangerService(name=""),
-                    )
-                    self.diff = {"before": before_dict, "after": {}}
+                    self.diff = {"before": to_dict(existing), "after": {}}
 
                 if not self.module.check_mode:
                     client.delete_service_by_id(existing.id)
 
         elif self.state == "present":
             if not existing:
-                incoming = build_service_from_params(
+                incoming = build_from_params(
+                    RangerService,
                     extract_service_params(self),
                 )
 
                 self.changed = True
 
                 if self.module._diff:
-                    _before_dict, after_dict = diff_dict(
-                        RangerService(name=""),
-                        incoming,
-                        filter_nullable=False,
-                    )
-                    self.diff = {"before": {}, "after": after_dict}
+                    self.diff = {"before": {}, "after": to_dict(incoming)}
 
                 if not self.module.check_mode:
                     self.service = client.create_service(incoming)
@@ -293,7 +288,8 @@ class RangerServiceModule(ServicesModule):
                     self.service = incoming
 
             else:
-                incoming = build_service_from_params(
+                incoming = build_from_params(
+                    RangerService,
                     extract_service_params(self),
                     existing=existing,
                 )
