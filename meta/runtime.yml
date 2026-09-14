@@ -41,3 +41,6 @@ action_groups:
     - ssb_job
     - ssb_udf
     - ssb_user_keytab
+  ranger:
+    - ranger_service
+    - ranger_service_info

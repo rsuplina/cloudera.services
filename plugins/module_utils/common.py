@@ -29,7 +29,7 @@ import os
 import sys
 import time
 
-from dataclasses import asdict, is_dataclass
+from dataclasses import asdict, fields, is_dataclass
 from http.cookiejar import CookieJar
 from typing import (
     Any,
@@ -64,27 +64,24 @@ def from_dict(cls: Type[T], data: Any) -> T:
         if current_data is None:
             return None
 
+        if current_data is NULLABLE:
+            return current_data
+
         origin = get_origin(current_cls)
 
         if origin is Union:
-            # If a Union, check each type in the Union
             for union_arg in get_args(current_cls):
-                # Ignore NoneType
                 if union_arg is type(None):
                     continue
 
-                # Process only dataclasses (not instances) and Lists
-                if isinstance(union_arg, type) and (
-                    is_dataclass(union_arg) or get_origin(union_arg) in (list, List)
-                ):
-                    # If Union contains a dataclass or List, parse accordingly
+                if is_dataclass(union_arg) or get_origin(union_arg) in (list, dict):
                     return _from_dict_recursive(union_arg, current_data)
-            # If a Union of primitives, return data as-is
             return current_data
 
         if origin is list or origin is List:
             # If a list, get the item type and parse each item
-            item_type = get_args(current_cls)[0]
+            item_args = get_args(current_cls)
+            item_type = item_args[0] if item_args else Any
             if isinstance(current_data, list):
                 return [_from_dict_recursive(item_type, item) for item in current_data]
             return []  # or raise error if data isn't a list
@@ -105,11 +102,14 @@ def from_dict(cls: Type[T], data: Any) -> T:
             )
 
         if isinstance(current_data, dict):
-            # If a dict, parse each value, assuming keys are strings
-            value_cls = get_args(current_cls)[1]
-            return {
-                k: _from_dict_recursive(value_cls, v) for k, v in current_data.items()
-            }
+            args = get_args(current_cls)
+            if len(args) == 2 and args[1] is not Any:
+                value_cls = args[1]
+                return {
+                    k: _from_dict_recursive(value_cls, v)
+                    for k, v in current_data.items()
+                }
+            return current_data
 
         # Return primitives (int, str, bool)
         return current_data
@@ -136,6 +136,136 @@ def to_dict(instance: Any) -> Dict[str, Any]:
         return asdict(instance, dict_factory=_skip_none_factory)
 
     raise TypeError(f"Expected dataclass type, got {type(instance)}")
+
+
+def overlay(
+    base: T,
+    override: T,
+    mutation_fields: Optional[List[str]] = None,
+) -> T:
+    """
+    Overlay the set fields of `override` onto `base`, returning a new instance.
+
+    A field is applied only when its value in `override` is not the NULLABLE
+    sentinel. When `mutation_fields` is given, only those field names are
+    considered from `override`; every other field is taken from `base`
+    unchanged (this is how read-only fields such as id/guid/version are
+    preserved during an update).
+
+    Args:
+        base: The dataclass instance to start from.
+        override: A dataclass instance of the same type whose set (non-NULLABLE)
+            fields are layered onto the base.
+        mutation_fields: Optional whitelist of field names eligible for override.
+
+    Returns:
+        A new dataclass instance of the same type as `base`.
+
+    Raises:
+        TypeError: If either argument is not a dataclass instance, or the two
+            are of different types.
+    """
+    if not is_dataclass(base) or isinstance(base, type):
+        raise TypeError(f"Expected dataclass instance for base, got {type(base)}")
+
+    if not is_dataclass(override) or isinstance(override, type):
+        raise TypeError(
+            f"Expected dataclass instance for override, got {type(override)}",
+        )
+
+    if type(base) != type(override):
+        raise TypeError(
+            f"Cannot overlay different dataclass types: {type(base)} vs {type(override)}",
+        )
+
+    def _merge(base_val: Any, override_val: Any) -> Any:
+        """Merge a single override value onto its base value.
+
+        NULLABLE means the field was not set in the override, so the base value
+        is kept. Two dataclass instances of the same type are merged recursively
+        field by field. Everything else - primitives, lists, dicts, explicit
+        None, or a type mismatch - is taken from the override as-is (lists and
+        dicts are atomic: a set value replaces the base wholesale).
+        """
+        if override_val is NULLABLE:
+            return base_val
+
+        if (
+            is_dataclass(base_val)
+            and not isinstance(base_val, type)
+            and is_dataclass(override_val)
+            and not isinstance(override_val, type)
+            and type(base_val) is type(override_val)
+        ):
+            return type(base_val)(
+                **{
+                    f.name: _merge(
+                        getattr(base_val, f.name, NULLABLE),
+                        getattr(override_val, f.name, NULLABLE),
+                    )
+                    for f in fields(base_val)
+                    if f.init
+                },
+            )
+
+        return override_val
+
+    merged = {}
+    for f in fields(base):
+        if not f.init:
+            continue
+        base_val = getattr(base, f.name, NULLABLE)
+        if mutation_fields is not None and f.name not in mutation_fields:
+            merged[f.name] = base_val
+        else:
+            merged[f.name] = _merge(base_val, getattr(override, f.name, NULLABLE))
+
+    return type(base)(**merged)
+
+
+def build_from_params(
+    cls: Type[T],
+    params: Dict[str, Any],
+    mutation_fields: Optional[List[str]] = None,
+    existing: Optional[T] = None,
+) -> T:
+    """
+    Build a dataclass instance from Ansible module parameters.
+
+    Each name in `mutation_fields` is read from `params`; an unset (None) value
+    becomes the NULLABLE sentinel so it is omitted from serialised requests. When
+    `mutation_fields` is not given, it defaults to the keys of the dataclass's
+    ``argument_spec()`` classmethod (the collection convention for the mutable
+    fields).
+
+    When `existing` is provided, its values (including read-only fields such as
+    id/guid/version) form the base and unset params fall back to the existing
+    instance rather than being cleared; otherwise a fresh instance carrying only
+    the set params is returned.
+
+    Args:
+        cls: The dataclass type to construct.
+        params: Mapping of field name to value (typically module parameters).
+        mutation_fields: Optional whitelist of mutable field names. Defaults to
+            the keys of ``cls.argument_spec()``.
+        existing: Optional current instance to overlay the set params onto.
+
+    Returns:
+        A new instance of `cls`.
+    """
+    if mutation_fields is None:
+        mutation_fields = list(cls.argument_spec().keys())  # type: ignore[attr-defined]
+
+    data = {
+        key: params[key] if params.get(key) is not None else NULLABLE
+        for key in mutation_fields
+    }
+    override = from_dict(cls, data)
+
+    if existing is None:
+        return override
+
+    return overlay(existing, override, mutation_fields=mutation_fields)
 
 
 def diff_dict(
