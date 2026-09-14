@@ -62,7 +62,7 @@ def ranger_module_args(module_args, env_context) -> Callable[[dict], None]:
     return _ranger_module_args
 
 
-def test_ranger_service_info_module_list_all(ranger_module_args, existing_service):
+def test_ranger_service_info_module_list_all(ranger_module_args, existing_ranger_service):
     """Test RangerServiceInfoModule listing all services."""
 
     ranger_module_args({})
@@ -74,13 +74,13 @@ def test_ranger_service_info_module_list_all(ranger_module_args, existing_servic
     assert result["changed"] is False
     assert "services" in result
     assert isinstance(result["services"], list)
-    assert any(service["id"] == existing_service.id for service in result["services"])
+    assert any(service["id"] == existing_ranger_service.id for service in result["services"])
 
 
-def test_ranger_service_info_module_by_name(ranger_module_args, existing_service):
+def test_ranger_service_info_module_by_name(ranger_module_args, existing_ranger_service):
     """Test RangerServiceInfoModule get service by name."""
 
-    ranger_module_args({"name": existing_service.name})
+    ranger_module_args({"name": existing_ranger_service.name})
 
     with pytest.raises(AnsibleExitJson) as e:
         ranger_service_info.main()
@@ -88,14 +88,14 @@ def test_ranger_service_info_module_by_name(ranger_module_args, existing_service
     result = e.value
     assert result["changed"] is False
     assert len(result["services"]) == 1
-    assert result["services"][0]["id"] == existing_service.id
-    assert result["services"][0]["name"] == existing_service.name
+    assert result["services"][0]["id"] == existing_ranger_service.id
+    assert result["services"][0]["name"] == existing_ranger_service.name
 
 
-def test_ranger_service_info_module_by_id(ranger_module_args, existing_service):
+def test_ranger_service_info_module_by_id(ranger_module_args, existing_ranger_service):
     """Test RangerServiceInfoModule get service by id."""
 
-    ranger_module_args({"id": existing_service.id})
+    ranger_module_args({"id": existing_ranger_service.id})
 
     with pytest.raises(AnsibleExitJson) as e:
         ranger_service_info.main()
@@ -103,8 +103,8 @@ def test_ranger_service_info_module_by_id(ranger_module_args, existing_service):
     result = e.value
     assert result["changed"] is False
     assert len(result["services"]) == 1
-    assert result["services"][0]["id"] == existing_service.id
-    assert result["services"][0]["name"] == existing_service.name
+    assert result["services"][0]["id"] == existing_ranger_service.id
+    assert result["services"][0]["name"] == existing_ranger_service.name
 
 
 def test_ranger_service_info_module_nonexistent_name(request, ranger_module_args):
@@ -135,10 +135,10 @@ def test_ranger_service_info_module_nonexistent_id(ranger_module_args):
     assert result["services"] == []
 
 
-def test_ranger_service_info_module_check_mode(ranger_module_args, existing_service):
+def test_ranger_service_info_module_check_mode(ranger_module_args, existing_ranger_service):
     """Test RangerServiceInfoModule in check mode."""
 
-    ranger_module_args({"id": existing_service.id, "_ansible_check_mode": True})
+    ranger_module_args({"id": existing_ranger_service.id, "_ansible_check_mode": True})
 
     with pytest.raises(AnsibleExitJson) as e:
         ranger_service_info.main()
@@ -146,15 +146,15 @@ def test_ranger_service_info_module_check_mode(ranger_module_args, existing_serv
     result = e.value
     assert result["changed"] is False
     assert len(result["services"]) == 1
-    assert result["services"][0]["id"] == existing_service.id
+    assert result["services"][0]["id"] == existing_ranger_service.id
 
 
 def test_ranger_service_info_module_with_configs(
     request,
     ranger_module_args,
     ranger_service_client,
-    test_service_type,
-    purge_service,
+    ranger_service_type,
+    purge_ranger_service,
 ):
     """Test RangerServiceInfoModule returns service configs verbatim."""
     service_name = f"ansible-test-info-configs-{request.node.name.lower()}"
@@ -162,11 +162,11 @@ def test_ranger_service_info_module_with_configs(
     created = ranger_service_client.create_service(
         RangerService(
             name=service_name,
-            type=test_service_type,
+            type=ranger_service_type,
             configs={"tag.download.auth.users": "hdfs"},
         ),
     )
-    purge_service(created)
+    purge_ranger_service(created)
 
     ranger_module_args({"name": service_name})
 

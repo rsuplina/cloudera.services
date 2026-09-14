@@ -29,25 +29,25 @@ REQUIRED_ENV_VARS = [
 ]
 
 
-def test_list_services(ranger_service_client, existing_service):
+def test_list_services(ranger_service_client, existing_ranger_service):
     """Test listing all services."""
     response = ranger_service_client.list_services()
 
     assert isinstance(response, list)
     assert len(response) > 0
     assert isinstance(response[0], RangerService)
-    assert any(service.id == existing_service.id for service in response)
+    assert any(service.id == existing_ranger_service.id for service in response)
 
 
-def test_get_service_by_id(ranger_service_client, existing_service):
+def test_get_service_by_id(ranger_service_client, existing_ranger_service):
     """Test getting a service by id."""
     response = ranger_service_client.get_service_by_id(
-        service_id=existing_service.id,
+        service_id=existing_ranger_service.id,
     )
 
     assert isinstance(response, RangerService)
-    assert response.id == existing_service.id
-    assert response.name == existing_service.name
+    assert response.id == existing_ranger_service.id
+    assert response.name == existing_ranger_service.name
 
 
 def test_get_service_by_id_not_found(ranger_service_client):
@@ -57,15 +57,15 @@ def test_get_service_by_id_not_found(ranger_service_client):
     assert response is None
 
 
-def test_get_service_by_name(ranger_service_client, existing_service):
+def test_get_service_by_name(ranger_service_client, existing_ranger_service):
     """Test getting a service by name."""
     response = ranger_service_client.get_service_by_name(
-        service_name=existing_service.name,
+        service_name=existing_ranger_service.name,
     )
 
     assert isinstance(response, RangerService)
-    assert response.name == existing_service.name
-    assert response.id == existing_service.id
+    assert response.name == existing_ranger_service.name
+    assert response.id == existing_ranger_service.id
 
 
 def test_get_service_by_name_not_found(ranger_service_client):

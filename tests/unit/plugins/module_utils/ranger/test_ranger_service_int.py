@@ -32,8 +32,8 @@ REQUIRED_ENV_VARS = [
 def test_create_service(
     request,
     ranger_service_client,
-    test_service_type,
-    purge_service,
+    ranger_service_type,
+    purge_ranger_service,
 ):
     """Test creating a service."""
     service_name = f"ansible-test-create-{request.node.name.lower()}"
@@ -41,16 +41,16 @@ def test_create_service(
     response = ranger_service_client.create_service(
         RangerService(
             name=service_name,
-            type=test_service_type,
+            type=ranger_service_type,
         ),
     )
 
     # Register the service for cleanup
-    purge_service(response)
+    purge_ranger_service(response)
 
     assert isinstance(response, RangerService)
     assert response.name == service_name
-    assert response.type == test_service_type
+    assert response.type == ranger_service_type
     assert response.id is not None
     assert response.guid is not None
 
@@ -58,8 +58,8 @@ def test_create_service(
 def test_create_service_with_display_name(
     request,
     ranger_service_client,
-    test_service_type,
-    purge_service,
+    ranger_service_type,
+    purge_ranger_service,
 ):
     """Test creating a service with a display name and description."""
     service_name = f"ansible-test-display-{request.node.name.lower()}"
@@ -67,29 +67,29 @@ def test_create_service_with_display_name(
     response = ranger_service_client.create_service(
         RangerService(
             name=service_name,
-            type=test_service_type,
+            type=ranger_service_type,
             display_name="Ansible Test Service",
             description="Created by an integration test",
         ),
     )
 
     # Register the service for cleanup
-    purge_service(response)
+    purge_ranger_service(response)
 
     assert isinstance(response, RangerService)
     assert response.name == service_name
     assert response.description == "Created by an integration test"
 
 
-def test_update_service(ranger_service_client, deletable_service):
+def test_update_service(ranger_service_client, deletable_ranger_service):
     """Test updating an existing service."""
 
     # Update the service description
-    deletable_service.description = "Updated description via integration test"
-    response = ranger_service_client.update_service(deletable_service)
+    deletable_ranger_service.description = "Updated description via integration test"
+    response = ranger_service_client.update_service(deletable_ranger_service)
 
     assert isinstance(response, RangerService)
-    assert response.id == deletable_service.id
+    assert response.id == deletable_ranger_service.id
     assert response.description == "Updated description via integration test"
 
     # Verify by fetching the service again
@@ -97,9 +97,9 @@ def test_update_service(ranger_service_client, deletable_service):
     assert fetched.description == "Updated description via integration test"
 
 
-def test_delete_service_by_id(ranger_service_client, deletable_service):
+def test_delete_service_by_id(ranger_service_client, deletable_ranger_service):
     """Test deleting a service by id."""
-    service_id = deletable_service.id
+    service_id = deletable_ranger_service.id
 
     # Delete the service
     response = ranger_service_client.delete_service_by_id(service_id)

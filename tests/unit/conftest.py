@@ -1823,7 +1823,7 @@ def ranger_service_client(ranger_rest_client) -> RangerServiceClient:
 
 
 @pytest.fixture(scope="session")
-def test_service_type() -> str:
+def ranger_service_type() -> str:
     """Provide the Ranger service type used to create test services.
 
     Defaults to ``tag``, a built-in Ranger service definition that has no
@@ -1834,7 +1834,7 @@ def test_service_type() -> str:
 
 
 @pytest.fixture
-def purge_service(
+def purge_ranger_service(
     ranger_service_client,
 ) -> Generator[Callable[[RangerService], RangerService], None, None]:
     """Factory fixture to register services for cleanup after the test."""
@@ -1858,10 +1858,10 @@ def purge_service(
 
 
 @pytest.fixture(scope="module")
-def existing_service(
+def existing_ranger_service(
     request,
     ranger_service_client,
-    test_service_type,
+    ranger_service_type,
 ) -> Generator[RangerService, None, None]:
     """Fixture to create a module-scoped test service for read-only tests."""
     service_name = f"ansible-test-existing-{request.node.name.lower().rstrip('.py')}"
@@ -1874,14 +1874,14 @@ def existing_service(
     service = ranger_service_client.create_service(
         RangerService(
             name=service_name,
-            type=test_service_type,
+            type=ranger_service_type,
             description="Existing service created by pytest",
         ),
     )
 
     yield service
 
-    # Clean up after the test (module scope, cannot use purge_service fixture)
+    # Clean up after the test (module scope, cannot use purge_ranger_service fixture)
     try:
         ranger_service_client.delete_service_by_id(service.id)
     except Exception as e:
@@ -1889,11 +1889,11 @@ def existing_service(
 
 
 @pytest.fixture
-def deletable_service(
+def deletable_ranger_service(
     request,
     ranger_service_client,
-    test_service_type,
-    purge_service,
+    ranger_service_type,
+    purge_ranger_service,
 ) -> Generator[RangerService, None, None]:
     """Fixture to create a function-scoped test service that can be modified or deleted."""
     service_name = f"ansible-test-deletable-{request.node.name.lower()}"
@@ -1906,12 +1906,12 @@ def deletable_service(
     service = ranger_service_client.create_service(
         RangerService(
             name=service_name,
-            type=test_service_type,
+            type=ranger_service_type,
             description="Deletable service created by pytest - safe to delete",
         ),
     )
 
     # Register for deletion after test
-    purge_service(service)
+    purge_ranger_service(service)
 
     yield service

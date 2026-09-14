@@ -61,8 +61,8 @@ def test_ranger_service_module_create(
     request,
     ranger_module_args,
     ranger_service_client,
-    test_service_type,
-    purge_service,
+    ranger_service_type,
+    purge_ranger_service,
 ):
     """Test RangerServiceModule creates a new service."""
     service_name = f"ansible-test-module-create-{request.node.name.lower()}"
@@ -70,7 +70,7 @@ def test_ranger_service_module_create(
     ranger_module_args(
         {
             "name": service_name,
-            "type": test_service_type,
+            "type": ranger_service_type,
             "description": "Created by module integration test",
         },
     )
@@ -81,12 +81,12 @@ def test_ranger_service_module_create(
     result = e.value
     assert result["changed"] is True
     assert result["service"]["name"] == service_name
-    assert result["service"]["type"] == test_service_type
+    assert result["service"]["type"] == ranger_service_type
     assert result["service"]["id"] is not None
 
     # Register for cleanup
     created = ranger_service_client.get_service_by_name(service_name)
-    purge_service(created)
+    purge_ranger_service(created)
 
     assert created is not None
     assert created.display_name == service_name
@@ -96,7 +96,7 @@ def test_ranger_service_module_create_check_mode(
     request,
     ranger_module_args,
     ranger_service_client,
-    test_service_type,
+    ranger_service_type,
 ):
     """Test RangerServiceModule create in check mode does not create a service."""
     service_name = f"ansible-test-module-checkmode-{request.node.name.lower()}"
@@ -104,7 +104,7 @@ def test_ranger_service_module_create_check_mode(
     ranger_module_args(
         {
             "name": service_name,
-            "type": test_service_type,
+            "type": ranger_service_type,
             "_ansible_check_mode": True,
         },
     )
@@ -122,15 +122,15 @@ def test_ranger_service_module_create_check_mode(
 
 def test_ranger_service_module_present_no_changes(
     ranger_module_args,
-    existing_service,
+    existing_ranger_service,
 ):
     """Test RangerServiceModule present against an unchanged service is a no-op."""
 
     ranger_module_args(
         {
-            "name": existing_service.name,
-            "type": existing_service.type,
-            "description": existing_service.description,
+            "name": existing_ranger_service.name,
+            "type": existing_ranger_service.type,
+            "description": existing_ranger_service.description,
         },
     )
 
@@ -139,21 +139,21 @@ def test_ranger_service_module_present_no_changes(
 
     result = e.value
     assert result["changed"] is False
-    assert result["service"]["id"] == existing_service.id
-    assert result["service"]["name"] == existing_service.name
+    assert result["service"]["id"] == existing_ranger_service.id
+    assert result["service"]["name"] == existing_ranger_service.name
 
 
 def test_ranger_service_module_update_in_place(
     ranger_module_args,
     ranger_service_client,
-    deletable_service,
+    deletable_ranger_service,
 ):
     """Test RangerServiceModule updates an existing service in place."""
 
     ranger_module_args(
         {
-            "name": deletable_service.name,
-            "type": deletable_service.type,
+            "name": deletable_ranger_service.name,
+            "type": deletable_ranger_service.type,
             "description": "Updated by module integration test",
         },
     )
@@ -163,26 +163,26 @@ def test_ranger_service_module_update_in_place(
 
     result = e.value
     assert result["changed"] is True
-    assert result["service"]["id"] == deletable_service.id
+    assert result["service"]["id"] == deletable_ranger_service.id
     assert result["service"]["description"] == "Updated by module integration test"
 
     # The service id must be unchanged (updated in place, not recreated)
-    fetched = ranger_service_client.get_service_by_id(deletable_service.id)
-    assert fetched.id == deletable_service.id
+    fetched = ranger_service_client.get_service_by_id(deletable_ranger_service.id)
+    assert fetched.id == deletable_ranger_service.id
     assert fetched.description == "Updated by module integration test"
 
 
 def test_ranger_service_module_update_check_mode(
     ranger_module_args,
     ranger_service_client,
-    deletable_service,
+    deletable_ranger_service,
 ):
     """Test RangerServiceModule update in check mode does not modify the service."""
 
     ranger_module_args(
         {
-            "name": deletable_service.name,
-            "type": deletable_service.type,
+            "name": deletable_ranger_service.name,
+            "type": deletable_ranger_service.type,
             "description": "Should not be persisted",
             "_ansible_check_mode": True,
         },
@@ -194,20 +194,20 @@ def test_ranger_service_module_update_check_mode(
     result = e.value
     assert result["changed"] is True
 
-    fetched = ranger_service_client.get_service_by_id(deletable_service.id)
+    fetched = ranger_service_client.get_service_by_id(deletable_ranger_service.id)
     assert fetched.description != "Should not be persisted"
 
 
 def test_ranger_service_module_delete_existing(
     ranger_module_args,
     ranger_service_client,
-    deletable_service,
+    deletable_ranger_service,
 ):
     """Test RangerServiceModule deletes an existing service."""
 
     ranger_module_args(
         {
-            "name": deletable_service.name,
+            "name": deletable_ranger_service.name,
             "state": "absent",
         },
     )
@@ -219,7 +219,7 @@ def test_ranger_service_module_delete_existing(
     assert result["changed"] is True
     assert result["service"] == {}
 
-    assert ranger_service_client.get_service_by_id(deletable_service.id) is None
+    assert ranger_service_client.get_service_by_id(deletable_ranger_service.id) is None
 
 
 def test_ranger_service_module_delete_nonexistent(request, ranger_module_args):
@@ -243,13 +243,13 @@ def test_ranger_service_module_delete_nonexistent(request, ranger_module_args):
 def test_ranger_service_module_delete_check_mode(
     ranger_module_args,
     ranger_service_client,
-    deletable_service,
+    deletable_ranger_service,
 ):
     """Test RangerServiceModule delete in check mode does not delete the service."""
 
     ranger_module_args(
         {
-            "name": deletable_service.name,
+            "name": deletable_ranger_service.name,
             "state": "absent",
             "_ansible_check_mode": True,
         },
@@ -261,4 +261,4 @@ def test_ranger_service_module_delete_check_mode(
     result = e.value
     assert result["changed"] is True
 
-    assert ranger_service_client.get_service_by_id(deletable_service.id) is not None
+    assert ranger_service_client.get_service_by_id(deletable_ranger_service.id) is not None
