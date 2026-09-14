@@ -261,4 +261,6 @@ def test_ranger_service_module_delete_check_mode(
     result = e.value
     assert result["changed"] is True
 
-    assert ranger_service_client.get_service_by_id(deletable_ranger_service.id) is not None
+    assert (
+        ranger_service_client.get_service_by_id(deletable_ranger_service.id) is not None
+    )

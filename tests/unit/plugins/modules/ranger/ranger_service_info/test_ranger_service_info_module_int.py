@@ -62,7 +62,10 @@ def ranger_module_args(module_args, env_context) -> Callable[[dict], None]:
     return _ranger_module_args
 
 
-def test_ranger_service_info_module_list_all(ranger_module_args, existing_ranger_service):
+def test_ranger_service_info_module_list_all(
+    ranger_module_args,
+    existing_ranger_service,
+):
     """Test RangerServiceInfoModule listing all services."""
 
     ranger_module_args({})
@@ -74,10 +77,15 @@ def test_ranger_service_info_module_list_all(ranger_module_args, existing_ranger
     assert result["changed"] is False
     assert "services" in result
     assert isinstance(result["services"], list)
-    assert any(service["id"] == existing_ranger_service.id for service in result["services"])
+    assert any(
+        service["id"] == existing_ranger_service.id for service in result["services"]
+    )
 
 
-def test_ranger_service_info_module_by_name(ranger_module_args, existing_ranger_service):
+def test_ranger_service_info_module_by_name(
+    ranger_module_args,
+    existing_ranger_service,
+):
     """Test RangerServiceInfoModule get service by name."""
 
     ranger_module_args({"name": existing_ranger_service.name})
@@ -135,7 +143,10 @@ def test_ranger_service_info_module_nonexistent_id(ranger_module_args):
     assert result["services"] == []
 
 
-def test_ranger_service_info_module_check_mode(ranger_module_args, existing_ranger_service):
+def test_ranger_service_info_module_check_mode(
+    ranger_module_args,
+    existing_ranger_service,
+):
     """Test RangerServiceInfoModule in check mode."""
 
     ranger_module_args({"id": existing_ranger_service.id, "_ansible_check_mode": True})
