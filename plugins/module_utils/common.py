@@ -29,7 +29,7 @@ import os
 import sys
 import time
 
-from dataclasses import asdict, is_dataclass
+from dataclasses import asdict, fields, is_dataclass
 from http.cookiejar import CookieJar
 from typing import (
     Any,
@@ -64,27 +64,24 @@ def from_dict(cls: Type[T], data: Any) -> T:
         if current_data is None:
             return None
 
+        if current_data is NULLABLE:
+            return current_data
+
         origin = get_origin(current_cls)
 
         if origin is Union:
-            # If a Union, check each type in the Union
             for union_arg in get_args(current_cls):
-                # Ignore NoneType
                 if union_arg is type(None):
                     continue
 
-                # Process only dataclasses (not instances) and Lists
-                if isinstance(union_arg, type) and (
-                    is_dataclass(union_arg) or get_origin(union_arg) in (list, List)
-                ):
-                    # If Union contains a dataclass or List, parse accordingly
+                if is_dataclass(union_arg) or get_origin(union_arg) in (list, dict):
                     return _from_dict_recursive(union_arg, current_data)
-            # If a Union of primitives, return data as-is
             return current_data
 
         if origin is list or origin is List:
             # If a list, get the item type and parse each item
-            item_type = get_args(current_cls)[0]
+            item_args = get_args(current_cls)
+            item_type = item_args[0] if item_args else Any
             if isinstance(current_data, list):
                 return [_from_dict_recursive(item_type, item) for item in current_data]
             return []  # or raise error if data isn't a list
@@ -105,11 +102,14 @@ def from_dict(cls: Type[T], data: Any) -> T:
             )
 
         if isinstance(current_data, dict):
-            # If a dict, parse each value, assuming keys are strings
-            value_cls = get_args(current_cls)[1]
-            return {
-                k: _from_dict_recursive(value_cls, v) for k, v in current_data.items()
-            }
+            args = get_args(current_cls)
+            if len(args) == 2 and args[1] is not Any:
+                value_cls = args[1]
+                return {
+                    k: _from_dict_recursive(value_cls, v)
+                    for k, v in current_data.items()
+                }
+            return current_data
 
         # Return primitives (int, str, bool)
         return current_data
@@ -178,14 +178,49 @@ def overlay(
             f"Cannot overlay different dataclass types: {type(base)} vs {type(override)}",
         )
 
-    merged = to_dict(base)
-    for key, value in to_dict(override).items():
-        if mutation_fields is not None and key not in mutation_fields:
-            continue
-        if value is not NULLABLE:
-            merged[key] = value
+    def _merge(base_val: Any, override_val: Any) -> Any:
+        """Merge a single override value onto its base value.
 
-    return from_dict(type(base), merged)
+        NULLABLE means the field was not set in the override, so the base value
+        is kept. Two dataclass instances of the same type are merged recursively
+        field by field. Everything else - primitives, lists, dicts, explicit
+        None, or a type mismatch - is taken from the override as-is (lists and
+        dicts are atomic: a set value replaces the base wholesale).
+        """
+        if override_val is NULLABLE:
+            return base_val
+
+        if (
+            is_dataclass(base_val)
+            and not isinstance(base_val, type)
+            and is_dataclass(override_val)
+            and not isinstance(override_val, type)
+            and type(base_val) is type(override_val)
+        ):
+            return type(base_val)(
+                **{
+                    f.name: _merge(
+                        getattr(base_val, f.name, NULLABLE),
+                        getattr(override_val, f.name, NULLABLE),
+                    )
+                    for f in fields(base_val)
+                    if f.init
+                },
+            )
+
+        return override_val
+
+    merged = {}
+    for f in fields(base):
+        if not f.init:
+            continue
+        base_val = getattr(base, f.name, NULLABLE)
+        if mutation_fields is not None and f.name not in mutation_fields:
+            merged[f.name] = base_val
+        else:
+            merged[f.name] = _merge(base_val, getattr(override, f.name, NULLABLE))
+
+    return type(base)(**merged)
 
 
 def build_from_params(
@@ -221,12 +256,11 @@ def build_from_params(
     if mutation_fields is None:
         mutation_fields = list(cls.argument_spec().keys())  # type: ignore[attr-defined]
 
-    override = cls(
-        **{
-            key: params[key] if params.get(key) is not None else NULLABLE
-            for key in mutation_fields
-        },
-    )
+    data = {
+        key: params[key] if params.get(key) is not None else NULLABLE
+        for key in mutation_fields
+    }
+    override = from_dict(cls, data)
 
     if existing is None:
         return override
