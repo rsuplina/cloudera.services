@@ -69,8 +69,6 @@ options:
     required: false
     default: present
     choices: ["present", "absent"]
-requirements:
-  - The O(name) option is required when O(state) is V(present) or V(absent).
 extends_documentation_fragment:
   - cloudera.services.services_client
 attributes:
@@ -231,10 +229,6 @@ class RangerServiceModule(ServicesModule):
                     default="present",
                 ),
             ),
-            required_if=[
-                ("state", "present", ["name"]),
-                ("state", "absent", ["name"]),
-            ],
             supports_check_mode=True,
         )
 
