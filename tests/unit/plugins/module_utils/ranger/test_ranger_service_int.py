@@ -18,8 +18,6 @@ from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
-import os
-
 from ansible_collections.cloudera.services.plugins.module_utils.ranger import (
     RangerService,
 )
@@ -31,9 +29,14 @@ REQUIRED_ENV_VARS = [
 ]
 
 
-def test_create_service(ranger_service_client, test_service_type, purge_service):
+def test_create_service(
+    request,
+    ranger_service_client,
+    test_service_type,
+    purge_service,
+):
     """Test creating a service."""
-    service_name = f"ansible-test-create-{os.getpid()}"
+    service_name = f"ansible-test-create-{request.node.name.lower()}"
 
     response = ranger_service_client.create_service(
         RangerService(
@@ -53,12 +56,13 @@ def test_create_service(ranger_service_client, test_service_type, purge_service)
 
 
 def test_create_service_with_display_name(
+    request,
     ranger_service_client,
     test_service_type,
     purge_service,
 ):
     """Test creating a service with a display name and description."""
-    service_name = f"ansible-test-display-{os.getpid()}"
+    service_name = f"ansible-test-display-{request.node.name.lower()}"
 
     response = ranger_service_client.create_service(
         RangerService(

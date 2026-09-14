@@ -1864,7 +1864,7 @@ def existing_service(
     test_service_type,
 ) -> Generator[RangerService, None, None]:
     """Fixture to create a module-scoped test service for read-only tests."""
-    service_name = f"ansible-test-existing-{os.getpid()}"
+    service_name = f"ansible-test-existing-{request.node.name.lower().rstrip('.py')}"
 
     # Clean up any existing test service with the same name
     stale = ranger_service_client.get_service_by_name(service_name)
@@ -1896,7 +1896,7 @@ def deletable_service(
     purge_service,
 ) -> Generator[RangerService, None, None]:
     """Fixture to create a function-scoped test service that can be modified or deleted."""
-    service_name = f"ansible-test-deletable-{os.getpid()}"
+    service_name = f"ansible-test-deletable-{request.node.name.lower()}"
 
     # Clean up any existing test service with the same name
     stale = ranger_service_client.get_service_by_name(service_name)

@@ -107,10 +107,12 @@ def test_ranger_service_info_module_by_id(ranger_module_args, existing_service):
     assert result["services"][0]["name"] == existing_service.name
 
 
-def test_ranger_service_info_module_nonexistent_name(ranger_module_args):
+def test_ranger_service_info_module_nonexistent_name(request, ranger_module_args):
     """Test RangerServiceInfoModule with a nonexistent service name."""
 
-    ranger_module_args({"name": f"nonexistent-service-{os.getpid()}"})
+    ranger_module_args(
+        {"name": f"nonexistent-service-{request.node.name.lower()}"},
+    )
 
     with pytest.raises(AnsibleExitJson) as e:
         ranger_service_info.main()
@@ -148,13 +150,14 @@ def test_ranger_service_info_module_check_mode(ranger_module_args, existing_serv
 
 
 def test_ranger_service_info_module_with_configs(
+    request,
     ranger_module_args,
     ranger_service_client,
     test_service_type,
     purge_service,
 ):
     """Test RangerServiceInfoModule returns service configs verbatim."""
-    service_name = f"ansible-test-info-configs-{os.getpid()}"
+    service_name = f"ansible-test-info-configs-{request.node.name.lower()}"
 
     created = ranger_service_client.create_service(
         RangerService(

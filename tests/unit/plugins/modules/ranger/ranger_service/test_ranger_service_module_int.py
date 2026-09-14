@@ -58,13 +58,14 @@ def ranger_module_args(module_args, env_context) -> Callable[[dict], None]:
 
 
 def test_ranger_service_module_create(
+    request,
     ranger_module_args,
     ranger_service_client,
     test_service_type,
     purge_service,
 ):
     """Test RangerServiceModule creates a new service."""
-    service_name = f"ansible-test-module-create-{os.getpid()}"
+    service_name = f"ansible-test-module-create-{request.node.name.lower()}"
 
     ranger_module_args(
         {
@@ -92,12 +93,13 @@ def test_ranger_service_module_create(
 
 
 def test_ranger_service_module_create_check_mode(
+    request,
     ranger_module_args,
     ranger_service_client,
     test_service_type,
 ):
     """Test RangerServiceModule create in check mode does not create a service."""
-    service_name = f"ansible-test-module-checkmode-{os.getpid()}"
+    service_name = f"ansible-test-module-checkmode-{request.node.name.lower()}"
 
     ranger_module_args(
         {
@@ -220,12 +222,12 @@ def test_ranger_service_module_delete_existing(
     assert ranger_service_client.get_service_by_id(deletable_service.id) is None
 
 
-def test_ranger_service_module_delete_nonexistent(ranger_module_args):
+def test_ranger_service_module_delete_nonexistent(request, ranger_module_args):
     """Test RangerServiceModule delete of a nonexistent service is a no-op."""
 
     ranger_module_args(
         {
-            "name": f"ansible-test-nonexistent-{os.getpid()}",
+            "name": f"ansible-test-nonexistent-{request.node.name.lower()}",
             "state": "absent",
         },
     )
