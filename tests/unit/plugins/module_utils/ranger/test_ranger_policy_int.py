@@ -41,7 +41,11 @@ def _tag_resource(suffix):
     return {"tag": {"values": [f"{base}-{suffix}"]}}
 
 
-def test_create_policy(ranger_policy_client, ranger_policy_test_service, ranger_purge_policy):
+def test_create_policy(
+    ranger_policy_client,
+    ranger_policy_test_service,
+    ranger_purge_policy,
+):
     """Test creating a policy."""
     policy_name = f"ansible-test-create-policy-{os.getpid()}"
 
@@ -122,7 +126,11 @@ def test_delete_policy_by_id_not_found(ranger_policy_client):
     assert response is None
 
 
-def test_merge_policy_adds_user(ranger_policy_client, ranger_policy_test_service, ranger_purge_policy):
+def test_merge_policy_adds_user(
+    ranger_policy_client,
+    ranger_policy_test_service,
+    ranger_purge_policy,
+):
     """Test the merge workflow adds a user to an existing policy item end-to-end."""
     policy_name = f"ansible-test-merge-{os.getpid()}"
 

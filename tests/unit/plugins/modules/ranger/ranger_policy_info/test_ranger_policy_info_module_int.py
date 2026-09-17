@@ -71,7 +71,9 @@ def test_ranger_policy_info_module_list_all(ranger_module_args, ranger_existing_
     assert result["changed"] is False
     assert "policies" in result
     assert isinstance(result["policies"], list)
-    assert any(policy["id"] == ranger_existing_policy.id for policy in result["policies"])
+    assert any(
+        policy["id"] == ranger_existing_policy.id for policy in result["policies"]
+    )
 
 
 def test_ranger_policy_info_module_by_id(ranger_module_args, ranger_existing_policy):
@@ -128,9 +130,12 @@ def test_ranger_policy_info_module_by_service(
     result = e.value
     assert result["changed"] is False
     assert isinstance(result["policies"], list)
-    assert any(policy["id"] == ranger_existing_policy.id for policy in result["policies"])
+    assert any(
+        policy["id"] == ranger_existing_policy.id for policy in result["policies"]
+    )
     assert all(
-        policy["service"] == ranger_policy_test_service.name for policy in result["policies"]
+        policy["service"] == ranger_policy_test_service.name
+        for policy in result["policies"]
     )
 
 
@@ -168,10 +173,15 @@ def test_ranger_policy_info_module_nonexistent_name(
     assert result["policies"] == []
 
 
-def test_ranger_policy_info_module_check_mode(ranger_module_args, ranger_existing_policy):
+def test_ranger_policy_info_module_check_mode(
+    ranger_module_args,
+    ranger_existing_policy,
+):
     """Test RangerPolicyInfoModule in check mode."""
 
-    ranger_module_args({"policy_id": ranger_existing_policy.id, "_ansible_check_mode": True})
+    ranger_module_args(
+        {"policy_id": ranger_existing_policy.id, "_ansible_check_mode": True},
+    )
 
     with pytest.raises(AnsibleExitJson) as e:
         ranger_policy_info.main()

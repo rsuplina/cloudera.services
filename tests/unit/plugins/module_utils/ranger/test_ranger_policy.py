@@ -535,7 +535,10 @@ def test_consolidate_policy_items_deduplicates_partial_overlap():
     """Test consolidating items with a partially-overlapping member list does not duplicate entries."""
     items = [
         {"accesses": [{"type": "read", "is_allowed": True}], "users": ["alice", "bob"]},
-        {"accesses": [{"type": "read", "is_allowed": True}], "users": ["bob", "charlie"]},
+        {
+            "accesses": [{"type": "read", "is_allowed": True}],
+            "users": ["bob", "charlie"],
+        },
     ]
 
     result = _consolidate_policy_items(items)

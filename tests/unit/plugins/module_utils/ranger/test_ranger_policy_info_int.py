@@ -56,7 +56,9 @@ def test_list_policies_by_service(
 
 def test_get_policy_by_id(ranger_policy_client, ranger_existing_policy):
     """Test getting a policy by id."""
-    response = ranger_policy_client.get_policy_by_id(policy_id=ranger_existing_policy.id)
+    response = ranger_policy_client.get_policy_by_id(
+        policy_id=ranger_existing_policy.id,
+    )
 
     assert isinstance(response, RangerPolicy)
     assert response.id == ranger_existing_policy.id
@@ -68,7 +70,11 @@ def test_get_policy_by_id_not_found(ranger_policy_client):
     assert ranger_policy_client.get_policy_by_id(policy_id=9999999) is None
 
 
-def test_get_policy_by_name(ranger_policy_client, ranger_policy_test_service, ranger_existing_policy):
+def test_get_policy_by_name(
+    ranger_policy_client,
+    ranger_policy_test_service,
+    ranger_existing_policy,
+):
     """Test getting a policy by service and name."""
     response = ranger_policy_client.get_policy_by_name(
         service_name=ranger_policy_test_service.name,
