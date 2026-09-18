@@ -238,6 +238,14 @@ class RangerPolicyItemAccess:
     type: str
     is_allowed: Union[bool, None, NULLABLE] = NULLABLE
 
+    @classmethod
+    def argument_spec(cls) -> Dict[str, Any]:
+        """Return the argument spec for Ansible module parameters."""
+        return dict(
+            type=dict(type="str", required=True),
+            is_allowed=dict(type="bool", required=False),
+        )
+
 
 @dataclass
 class RangerPolicyItemCondition:
@@ -245,6 +253,14 @@ class RangerPolicyItemCondition:
 
     type: str
     values: Union[List[str], None, NULLABLE] = NULLABLE
+
+    @classmethod
+    def argument_spec(cls) -> Dict[str, Any]:
+        """Return the argument spec for Ansible module parameters."""
+        return dict(
+            type=dict(type="str", required=True),
+            values=dict(type="list", elements="str", required=False),
+        )
 
 
 @dataclass
@@ -258,6 +274,28 @@ class RangerPolicyItem:
     conditions: Union[List[RangerPolicyItemCondition], None, NULLABLE] = NULLABLE
     delegate_admin: Union[bool, None, NULLABLE] = NULLABLE
 
+    @classmethod
+    def argument_spec(cls) -> Dict[str, Any]:
+        """Return the argument spec for Ansible module parameters."""
+        return dict(
+            accesses=dict(
+                type="list",
+                elements="dict",
+                required=False,
+                options=RangerPolicyItemAccess.argument_spec(),
+            ),
+            users=dict(type="list", elements="str", required=False),
+            groups=dict(type="list", elements="str", required=False),
+            roles=dict(type="list", elements="str", required=False),
+            conditions=dict(
+                type="list",
+                elements="dict",
+                required=False,
+                options=RangerPolicyItemCondition.argument_spec(),
+            ),
+            delegate_admin=dict(type="bool", required=False),
+        )
+
 
 @dataclass
 class RangerPolicyItemDataMaskInfo:
@@ -266,6 +304,15 @@ class RangerPolicyItemDataMaskInfo:
     data_mask_type: Union[str, None, NULLABLE] = NULLABLE
     condition_expr: Union[str, None, NULLABLE] = NULLABLE
     value_expr: Union[str, None, NULLABLE] = NULLABLE
+
+    @classmethod
+    def argument_spec(cls) -> Dict[str, Any]:
+        """Return the argument spec for Ansible module parameters."""
+        return dict(
+            data_mask_type=dict(type="str", required=False),
+            condition_expr=dict(type="str", required=False),
+            value_expr=dict(type="str", required=False),
+        )
 
 
 @dataclass
@@ -280,12 +327,46 @@ class RangerDataMaskPolicyItem:
     conditions: Union[List[RangerPolicyItemCondition], None, NULLABLE] = NULLABLE
     delegate_admin: Union[bool, None, NULLABLE] = NULLABLE
 
+    @classmethod
+    def argument_spec(cls) -> Dict[str, Any]:
+        """Return the argument spec for Ansible module parameters."""
+        return dict(
+            data_mask_info=dict(
+                type="dict",
+                required=False,
+                options=RangerPolicyItemDataMaskInfo.argument_spec(),
+            ),
+            accesses=dict(
+                type="list",
+                elements="dict",
+                required=False,
+                options=RangerPolicyItemAccess.argument_spec(),
+            ),
+            users=dict(type="list", elements="str", required=False),
+            groups=dict(type="list", elements="str", required=False),
+            roles=dict(type="list", elements="str", required=False),
+            conditions=dict(
+                type="list",
+                elements="dict",
+                required=False,
+                options=RangerPolicyItemCondition.argument_spec(),
+            ),
+            delegate_admin=dict(type="bool", required=False),
+        )
+
 
 @dataclass
 class RangerPolicyItemRowFilterInfo:
     """Row-filter info for ``rowFilterPolicyItems``."""
 
     filter_expr: Union[str, None, NULLABLE] = NULLABLE
+
+    @classmethod
+    def argument_spec(cls) -> Dict[str, Any]:
+        """Return the argument spec for Ansible module parameters."""
+        return dict(
+            filter_expr=dict(type="str", required=False),
+        )
 
 
 @dataclass
@@ -299,6 +380,33 @@ class RangerRowFilterPolicyItem:
     roles: Union[List[str], None, NULLABLE] = NULLABLE
     conditions: Union[List[RangerPolicyItemCondition], None, NULLABLE] = NULLABLE
     delegate_admin: Union[bool, None, NULLABLE] = NULLABLE
+
+    @classmethod
+    def argument_spec(cls) -> Dict[str, Any]:
+        """Return the argument spec for Ansible module parameters."""
+        return dict(
+            row_filter_info=dict(
+                type="dict",
+                required=False,
+                options=RangerPolicyItemRowFilterInfo.argument_spec(),
+            ),
+            accesses=dict(
+                type="list",
+                elements="dict",
+                required=False,
+                options=RangerPolicyItemAccess.argument_spec(),
+            ),
+            users=dict(type="list", elements="str", required=False),
+            groups=dict(type="list", elements="str", required=False),
+            roles=dict(type="list", elements="str", required=False),
+            conditions=dict(
+                type="list",
+                elements="dict",
+                required=False,
+                options=RangerPolicyItemCondition.argument_spec(),
+            ),
+            delegate_admin=dict(type="bool", required=False),
+        )
 
 
 @dataclass
@@ -317,6 +425,14 @@ class RangerValidityRecurrence:
     schedule: Union[Dict[str, Any], None, NULLABLE] = NULLABLE
     interval: Union[Dict[str, Any], None, NULLABLE] = NULLABLE
 
+    @classmethod
+    def argument_spec(cls) -> Dict[str, Any]:
+        """Return the argument spec for Ansible module parameters."""
+        return dict(
+            schedule=dict(type="dict", required=False),
+            interval=dict(type="dict", required=False),
+        )
+
 
 @dataclass
 class RangerValiditySchedule:
@@ -326,6 +442,21 @@ class RangerValiditySchedule:
     end_time: Union[str, None, NULLABLE] = NULLABLE
     time_zone: Union[str, None, NULLABLE] = NULLABLE
     recurrences: Union[List[RangerValidityRecurrence], None, NULLABLE] = NULLABLE
+
+    @classmethod
+    def argument_spec(cls) -> Dict[str, Any]:
+        """Return the argument spec for Ansible module parameters."""
+        return dict(
+            start_time=dict(type="str", required=False),
+            end_time=dict(type="str", required=False),
+            time_zone=dict(type="str", required=False),
+            recurrences=dict(
+                type="list",
+                elements="dict",
+                required=False,
+                options=RangerValidityRecurrence.argument_spec(),
+            ),
+        )
 
 
 @dataclass
@@ -404,34 +535,58 @@ class RangerPolicy:
                 elements="dict",
                 required=False,
             ),
-            conditions=dict(type="list", elements="dict", required=False),
+            conditions=dict(
+                type="list",
+                elements="dict",
+                required=False,
+                options=RangerPolicyItemCondition.argument_spec(),
+            ),
             policy_items=dict(
                 type="list",
                 elements="dict",
                 required=False,
                 aliases=["access_policies"],
+                options=RangerPolicyItem.argument_spec(),
             ),
             deny_policy_items=dict(
                 type="list",
                 elements="dict",
                 required=False,
                 aliases=["deny_policies"],
+                options=RangerPolicyItem.argument_spec(),
             ),
-            allow_exceptions=dict(type="list", elements="dict", required=False),
-            deny_exceptions=dict(type="list", elements="dict", required=False),
+            allow_exceptions=dict(
+                type="list",
+                elements="dict",
+                required=False,
+                options=RangerPolicyItem.argument_spec(),
+            ),
+            deny_exceptions=dict(
+                type="list",
+                elements="dict",
+                required=False,
+                options=RangerPolicyItem.argument_spec(),
+            ),
             data_mask_policy_items=dict(
                 type="list",
                 elements="dict",
                 required=False,
                 aliases=["data_mask_policies"],
+                options=RangerDataMaskPolicyItem.argument_spec(),
             ),
             row_filter_policy_items=dict(
                 type="list",
                 elements="dict",
                 required=False,
                 aliases=["row_filter_policies"],
+                options=RangerRowFilterPolicyItem.argument_spec(),
             ),
-            validity_schedules=dict(type="list", elements="dict", required=False),
+            validity_schedules=dict(
+                type="list",
+                elements="dict",
+                required=False,
+                options=RangerValiditySchedule.argument_spec(),
+            ),
             policy_labels=dict(type="list", elements="str", required=False),
             options=dict(type="dict", required=False),
         )

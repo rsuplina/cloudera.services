@@ -97,6 +97,18 @@ options:
     type: list
     elements: dict
     required: false
+    suboptions:
+      type:
+        description:
+          - The type of the condition.
+        type: str
+        required: true
+      values:
+        description:
+          - The values associated with the condition.
+        type: list
+        elements: str
+        required: false
   policy_items:
     description:
       - List of allow policy items.
@@ -105,6 +117,65 @@ options:
     required: false
     aliases:
       - access_policies
+    suboptions:
+      accesses:
+        description:
+          - List of access types and whether each is allowed.
+        type: list
+        elements: dict
+        required: false
+        suboptions:
+          type:
+            description:
+              - The access type (e.g. C(read), C(write), C(select)).
+            type: str
+            required: true
+          is_allowed:
+            description:
+              - Whether this access type is allowed.
+            type: bool
+            required: false
+      users:
+        description:
+          - List of users the policy item applies to.
+        type: list
+        elements: str
+        required: false
+      groups:
+        description:
+          - List of groups the policy item applies to.
+        type: list
+        elements: str
+        required: false
+      roles:
+        description:
+          - List of roles the policy item applies to.
+        type: list
+        elements: str
+        required: false
+      conditions:
+        description:
+          - List of custom conditions for the policy item.
+        type: list
+        elements: dict
+        required: false
+        suboptions:
+          type:
+            description:
+              - The type of the condition.
+            type: str
+            required: true
+          values:
+            description:
+              - The values associated with the condition.
+            type: list
+            elements: str
+            required: false
+      delegate_admin:
+        description:
+          - Whether users/groups of this policy item are allowed to update the policy.
+        type: bool
+        required: false
   deny_policy_items:
     description:
       - List of deny policy items.
@@ -113,18 +184,195 @@ options:
     required: false
     aliases:
       - deny_policies
+    suboptions:
+      accesses:
+        description:
+          - List of access types and whether each is allowed.
+        type: list
+        elements: dict
+        required: false
+        suboptions:
+          type:
+            description:
+              - The access type (e.g. C(read), C(write), C(select)).
+            type: str
+            required: true
+          is_allowed:
+            description:
+              - Whether this access type is allowed.
+            type: bool
+            required: false
+      users:
+        description:
+          - List of users the policy item applies to.
+        type: list
+        elements: str
+        required: false
+      groups:
+        description:
+          - List of groups the policy item applies to.
+        type: list
+        elements: str
+        required: false
+      roles:
+        description:
+          - List of roles the policy item applies to.
+        type: list
+        elements: str
+        required: false
+      conditions:
+        description:
+          - List of custom conditions for the policy item.
+        type: list
+        elements: dict
+        required: false
+        suboptions:
+          type:
+            description:
+              - The type of the condition.
+            type: str
+            required: true
+          values:
+            description:
+              - The values associated with the condition.
+            type: list
+            elements: str
+            required: false
+      delegate_admin:
+        description:
+          - Whether users/groups of this policy item are allowed to update the policy.
+        type: bool
+        required: false
   allow_exceptions:
     description:
       - List of allow exception policy items.
     type: list
     elements: dict
     required: false
+    suboptions:
+      accesses:
+        description:
+          - List of access types and whether each is allowed.
+        type: list
+        elements: dict
+        required: false
+        suboptions:
+          type:
+            description:
+              - The access type (e.g. C(read), C(write), C(select)).
+            type: str
+            required: true
+          is_allowed:
+            description:
+              - Whether this access type is allowed.
+            type: bool
+            required: false
+      users:
+        description:
+          - List of users the policy item applies to.
+        type: list
+        elements: str
+        required: false
+      groups:
+        description:
+          - List of groups the policy item applies to.
+        type: list
+        elements: str
+        required: false
+      roles:
+        description:
+          - List of roles the policy item applies to.
+        type: list
+        elements: str
+        required: false
+      conditions:
+        description:
+          - List of custom conditions for the policy item.
+        type: list
+        elements: dict
+        required: false
+        suboptions:
+          type:
+            description:
+              - The type of the condition.
+            type: str
+            required: true
+          values:
+            description:
+              - The values associated with the condition.
+            type: list
+            elements: str
+            required: false
+      delegate_admin:
+        description:
+          - Whether users/groups of this policy item are allowed to update the policy.
+        type: bool
+        required: false
   deny_exceptions:
     description:
       - List of deny exception policy items.
     type: list
     elements: dict
     required: false
+    suboptions:
+      accesses:
+        description:
+          - List of access types and whether each is allowed.
+        type: list
+        elements: dict
+        required: false
+        suboptions:
+          type:
+            description:
+              - The access type (e.g. C(read), C(write), C(select)).
+            type: str
+            required: true
+          is_allowed:
+            description:
+              - Whether this access type is allowed.
+            type: bool
+            required: false
+      users:
+        description:
+          - List of users the policy item applies to.
+        type: list
+        elements: str
+        required: false
+      groups:
+        description:
+          - List of groups the policy item applies to.
+        type: list
+        elements: str
+        required: false
+      roles:
+        description:
+          - List of roles the policy item applies to.
+        type: list
+        elements: str
+        required: false
+      conditions:
+        description:
+          - List of custom conditions for the policy item.
+        type: list
+        elements: dict
+        required: false
+        suboptions:
+          type:
+            description:
+              - The type of the condition.
+            type: str
+            required: true
+          values:
+            description:
+              - The values associated with the condition.
+            type: list
+            elements: str
+            required: false
+      delegate_admin:
+        description:
+          - Whether users/groups of this policy item are allowed to update the policy.
+        type: bool
+        required: false
   data_mask_policy_items:
     description:
       - List of data masking policy items.
@@ -133,6 +381,86 @@ options:
     required: false
     aliases:
       - data_mask_policies
+    suboptions:
+      data_mask_info:
+        description:
+          - The data masking configuration to apply.
+        type: dict
+        required: false
+        suboptions:
+          data_mask_type:
+            description:
+              - The type of data masking to apply.
+            type: str
+            required: false
+          condition_expr:
+            description:
+              - The condition expression controlling when the mask applies.
+            type: str
+            required: false
+          value_expr:
+            description:
+              - The expression used to compute the masked value.
+            type: str
+            required: false
+      accesses:
+        description:
+          - List of access types and whether each is allowed.
+        type: list
+        elements: dict
+        required: false
+        suboptions:
+          type:
+            description:
+              - The access type (e.g. C(read), C(write), C(select)).
+            type: str
+            required: true
+          is_allowed:
+            description:
+              - Whether this access type is allowed.
+            type: bool
+            required: false
+      users:
+        description:
+          - List of users the policy item applies to.
+        type: list
+        elements: str
+        required: false
+      groups:
+        description:
+          - List of groups the policy item applies to.
+        type: list
+        elements: str
+        required: false
+      roles:
+        description:
+          - List of roles the policy item applies to.
+        type: list
+        elements: str
+        required: false
+      conditions:
+        description:
+          - List of custom conditions for the policy item.
+        type: list
+        elements: dict
+        required: false
+        suboptions:
+          type:
+            description:
+              - The type of the condition.
+            type: str
+            required: true
+          values:
+            description:
+              - The values associated with the condition.
+            type: list
+            elements: str
+            required: false
+      delegate_admin:
+        description:
+          - Whether users/groups of this policy item are allowed to update the policy.
+        type: bool
+        required: false
   row_filter_policy_items:
     description:
       - List of row filtering policy items.
@@ -141,12 +469,115 @@ options:
     required: false
     aliases:
       - row_filter_policies
+    suboptions:
+      row_filter_info:
+        description:
+          - The row filter configuration to apply.
+        type: dict
+        required: false
+        suboptions:
+          filter_expr:
+            description:
+              - The filter expression applied to rows.
+            type: str
+            required: false
+      accesses:
+        description:
+          - List of access types and whether each is allowed.
+        type: list
+        elements: dict
+        required: false
+        suboptions:
+          type:
+            description:
+              - The access type (e.g. C(read), C(write), C(select)).
+            type: str
+            required: true
+          is_allowed:
+            description:
+              - Whether this access type is allowed.
+            type: bool
+            required: false
+      users:
+        description:
+          - List of users the policy item applies to.
+        type: list
+        elements: str
+        required: false
+      groups:
+        description:
+          - List of groups the policy item applies to.
+        type: list
+        elements: str
+        required: false
+      roles:
+        description:
+          - List of roles the policy item applies to.
+        type: list
+        elements: str
+        required: false
+      conditions:
+        description:
+          - List of custom conditions for the policy item.
+        type: list
+        elements: dict
+        required: false
+        suboptions:
+          type:
+            description:
+              - The type of the condition.
+            type: str
+            required: true
+          values:
+            description:
+              - The values associated with the condition.
+            type: list
+            elements: str
+            required: false
+      delegate_admin:
+        description:
+          - Whether users/groups of this policy item are allowed to update the policy.
+        type: bool
+        required: false
   validity_schedules:
     description:
       - Time-based policy schedules.
     type: list
     elements: dict
     required: false
+    suboptions:
+      start_time:
+        description:
+          - The start time of the validity schedule.
+        type: str
+        required: false
+      end_time:
+        description:
+          - The end time of the validity schedule.
+        type: str
+        required: false
+      time_zone:
+        description:
+          - The time zone the schedule times are expressed in.
+        type: str
+        required: false
+      recurrences:
+        description:
+          - List of recurrence definitions for the schedule.
+        type: list
+        elements: dict
+        required: false
+        suboptions:
+          schedule:
+            description:
+              - The recurrence schedule definition.
+            type: dict
+            required: false
+          interval:
+            description:
+              - The recurrence interval definition.
+            type: dict
+            required: false
   policy_labels:
     description:
       - List of labels associated with the policy.
@@ -229,9 +660,9 @@ EXAMPLES = r"""
     access_policies:
       - accesses:
           - type: "type-create"
-            isAllowed: true
+            is_allowed: true
           - type: "type-read"
-            isAllowed: true
+            is_allowed: true
         users:
           - "admin"
           - "impala"
@@ -252,7 +683,7 @@ EXAMPLES = r"""
           - "kafka"
         accesses:
           - type: "select"
-            isAllowed: true
+            is_allowed: true
 
 - name: Delete a Ranger policy
   cloudera.services.ranger_policy:
