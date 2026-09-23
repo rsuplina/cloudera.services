@@ -159,41 +159,486 @@ policies:
         - Dictionary of resources the policy applies to.
       type: dict
       returned: always
+      contains:
+        values:
+          description:
+            - List of resource values matched by this resource definition.
+          type: list
+          elements: str
+          returned: always
+        is_excludes:
+          description:
+            - Whether the specified values are excluded rather than included.
+          type: bool
+          returned: always
+        is_recursive:
+          description:
+            - Whether the resource match is applied recursively.
+          type: bool
+          returned: always
+    additional_resources:
+      description:
+        - List of additional resource definitions.
+      type: list
+      elements: dict
+      returned: always
+      contains:
+        values:
+          description:
+            - List of resource values matched by this resource definition.
+          type: list
+          elements: str
+          returned: always
+        is_excludes:
+          description:
+            - Whether the specified values are excluded rather than included.
+          type: bool
+          returned: always
+        is_recursive:
+          description:
+            - Whether the resource match is applied recursively.
+          type: bool
+          returned: always
     conditions:
       description:
         - List of policy conditions.
       type: list
+      elements: dict
       returned: always
+      contains:
+        type:
+          description:
+            - The type of the condition.
+          type: str
+          returned: always
+        values:
+          description:
+            - The values associated with the condition.
+          type: list
+          elements: str
+          returned: always
     policy_items:
       description:
         - List of allow policy items.
       type: list
+      elements: dict
       returned: always
+      contains:
+        accesses:
+          description:
+            - List of access types and whether each is allowed.
+          type: list
+          elements: dict
+          returned: always
+          contains:
+            type:
+              description:
+                - The access type (e.g. V(read), V(write), V(select)).
+              type: str
+              returned: always
+            is_allowed:
+              description:
+                - Whether this access type is allowed.
+              type: bool
+              returned: always
+        users:
+          description:
+            - List of users the policy item applies to.
+          type: list
+          elements: str
+          returned: always
+        groups:
+          description:
+            - List of groups the policy item applies to.
+          type: list
+          elements: str
+          returned: always
+        roles:
+          description:
+            - List of roles the policy item applies to.
+          type: list
+          elements: str
+          returned: always
+        conditions:
+          description:
+            - List of custom conditions for the policy item.
+          type: list
+          elements: dict
+          returned: always
+          contains:
+            type:
+              description:
+                - The type of the condition.
+              type: str
+              returned: always
+            values:
+              description:
+                - The values associated with the condition.
+              type: list
+              elements: str
+              returned: always
+        delegate_admin:
+          description:
+            - Whether users/groups of this policy item are allowed to update the policy.
+          type: bool
+          returned: always
     deny_policy_items:
       description:
         - List of deny policy items.
       type: list
+      elements: dict
       returned: always
+      contains:
+        accesses:
+          description:
+            - List of access types and whether each is allowed.
+          type: list
+          elements: dict
+          returned: always
+          contains:
+            type:
+              description:
+                - The access type (e.g. V(read), V(write), V(select)).
+              type: str
+              returned: always
+            is_allowed:
+              description:
+                - Whether this access type is allowed.
+              type: bool
+              returned: always
+        users:
+          description:
+            - List of users the policy item applies to.
+          type: list
+          elements: str
+          returned: always
+        groups:
+          description:
+            - List of groups the policy item applies to.
+          type: list
+          elements: str
+          returned: always
+        roles:
+          description:
+            - List of roles the policy item applies to.
+          type: list
+          elements: str
+          returned: always
+        conditions:
+          description:
+            - List of custom conditions for the policy item.
+          type: list
+          elements: dict
+          returned: always
+          contains:
+            type:
+              description:
+                - The type of the condition.
+              type: str
+              returned: always
+            values:
+              description:
+                - The values associated with the condition.
+              type: list
+              elements: str
+              returned: always
+        delegate_admin:
+          description:
+            - Whether users/groups of this policy item are allowed to update the policy.
+          type: bool
+          returned: always
     allow_exceptions:
       description:
         - List of allow exception policy items.
       type: list
+      elements: dict
       returned: always
+      contains:
+        accesses:
+          description:
+            - List of access types and whether each is allowed.
+          type: list
+          elements: dict
+          returned: always
+          contains:
+            type:
+              description:
+                - The access type (e.g. V(read), V(write), V(select)).
+              type: str
+              returned: always
+            is_allowed:
+              description:
+                - Whether this access type is allowed.
+              type: bool
+              returned: always
+        users:
+          description:
+            - List of users the policy item applies to.
+          type: list
+          elements: str
+          returned: always
+        groups:
+          description:
+            - List of groups the policy item applies to.
+          type: list
+          elements: str
+          returned: always
+        roles:
+          description:
+            - List of roles the policy item applies to.
+          type: list
+          elements: str
+          returned: always
+        conditions:
+          description:
+            - List of custom conditions for the policy item.
+          type: list
+          elements: dict
+          returned: always
+          contains:
+            type:
+              description:
+                - The type of the condition.
+              type: str
+              returned: always
+            values:
+              description:
+                - The values associated with the condition.
+              type: list
+              elements: str
+              returned: always
+        delegate_admin:
+          description:
+            - Whether users/groups of this policy item are allowed to update the policy.
+          type: bool
+          returned: always
     deny_exceptions:
       description:
         - List of deny exception policy items.
       type: list
+      elements: dict
       returned: always
+      contains:
+        accesses:
+          description:
+            - List of access types and whether each is allowed.
+          type: list
+          elements: dict
+          returned: always
+          contains:
+            type:
+              description:
+                - The access type (e.g. V(read), V(write), V(select)).
+              type: str
+              returned: always
+            is_allowed:
+              description:
+                - Whether this access type is allowed.
+              type: bool
+              returned: always
+        users:
+          description:
+            - List of users the policy item applies to.
+          type: list
+          elements: str
+          returned: always
+        groups:
+          description:
+            - List of groups the policy item applies to.
+          type: list
+          elements: str
+          returned: always
+        roles:
+          description:
+            - List of roles the policy item applies to.
+          type: list
+          elements: str
+          returned: always
+        conditions:
+          description:
+            - List of custom conditions for the policy item.
+          type: list
+          elements: dict
+          returned: always
+          contains:
+            type:
+              description:
+                - The type of the condition.
+              type: str
+              returned: always
+            values:
+              description:
+                - The values associated with the condition.
+              type: list
+              elements: str
+              returned: always
+        delegate_admin:
+          description:
+            - Whether users/groups of this policy item are allowed to update the policy.
+          type: bool
+          returned: always
     data_mask_policy_items:
       description:
         - List of data mask policy items.
       type: list
+      elements: dict
       returned: always
+      contains:
+        data_mask_info:
+          description:
+            - The data masking configuration applied by this policy item.
+          type: dict
+          returned: always
+          contains:
+            data_mask_type:
+              description:
+                - The type of data masking to apply.
+              type: str
+              returned: always
+            condition_expr:
+              description:
+                - The condition expression controlling when the mask applies.
+              type: str
+              returned: always
+            value_expr:
+              description:
+                - The expression used to compute the masked value.
+              type: str
+              returned: always
+        accesses:
+          description:
+            - List of access types and whether each is allowed.
+          type: list
+          elements: dict
+          returned: always
+          contains:
+            type:
+              description:
+                - The access type (e.g. V(read), V(write), V(select)).
+              type: str
+              returned: always
+            is_allowed:
+              description:
+                - Whether this access type is allowed.
+              type: bool
+              returned: always
+        users:
+          description:
+            - List of users the policy item applies to.
+          type: list
+          elements: str
+          returned: always
+        groups:
+          description:
+            - List of groups the policy item applies to.
+          type: list
+          elements: str
+          returned: always
+        roles:
+          description:
+            - List of roles the policy item applies to.
+          type: list
+          elements: str
+          returned: always
+        conditions:
+          description:
+            - List of custom conditions for the policy item.
+          type: list
+          elements: dict
+          returned: always
+          contains:
+            type:
+              description:
+                - The type of the condition.
+              type: str
+              returned: always
+            values:
+              description:
+                - The values associated with the condition.
+              type: list
+              elements: str
+              returned: always
+        delegate_admin:
+          description:
+            - Whether users/groups of this policy item are allowed to update the policy.
+          type: bool
+          returned: always
     row_filter_policy_items:
       description:
         - List of row filter policy items.
       type: list
+      elements: dict
       returned: always
+      contains:
+        row_filter_info:
+          description:
+            - The row filter configuration applied by this policy item.
+          type: dict
+          returned: always
+          contains:
+            filter_expr:
+              description:
+                - The filter expression applied to rows.
+              type: str
+              returned: always
+        accesses:
+          description:
+            - List of access types and whether each is allowed.
+          type: list
+          elements: dict
+          returned: always
+          contains:
+            type:
+              description:
+                - The access type (e.g. V(read), V(write), V(select)).
+              type: str
+              returned: always
+            is_allowed:
+              description:
+                - Whether this access type is allowed.
+              type: bool
+              returned: always
+        users:
+          description:
+            - List of users the policy item applies to.
+          type: list
+          elements: str
+          returned: always
+        groups:
+          description:
+            - List of groups the policy item applies to.
+          type: list
+          elements: str
+          returned: always
+        roles:
+          description:
+            - List of roles the policy item applies to.
+          type: list
+          elements: str
+          returned: always
+        conditions:
+          description:
+            - List of custom conditions for the policy item.
+          type: list
+          elements: dict
+          returned: always
+          contains:
+            type:
+              description:
+                - The type of the condition.
+              type: str
+              returned: always
+            values:
+              description:
+                - The values associated with the condition.
+              type: list
+              elements: str
+              returned: always
+        delegate_admin:
+          description:
+            - Whether users/groups of this policy item are allowed to update the policy.
+          type: bool
+          returned: always
     service_type:
       description:
         - Type of the service (e.g., hive, hdfs) this policy applies to.
@@ -201,18 +646,53 @@ policies:
       returned: always
     options:
       description:
-        - Dictionary of policy options.
+        - Dictionary of additional policy options.
       type: dict
       returned: always
     validity_schedules:
       description:
         - List of validity schedules attached to the policy.
       type: list
+      elements: dict
       returned: always
+      contains:
+        start_time:
+          description:
+            - The start time of the validity schedule.
+          type: str
+          returned: always
+        end_time:
+          description:
+            - The end time of the validity schedule.
+          type: str
+          returned: always
+        time_zone:
+          description:
+            - The time zone the schedule times are expressed in.
+          type: str
+          returned: always
+        recurrences:
+          description:
+            - List of recurrence definitions for the schedule.
+          type: list
+          elements: dict
+          returned: always
+          contains:
+            schedule:
+              description:
+                - The recurrence schedule definition.
+              type: dict
+              returned: always
+            interval:
+              description:
+                - The recurrence interval definition.
+              type: dict
+              returned: always
     policy_labels:
       description:
         - List of policy labels.
       type: list
+      elements: str
       returned: always
     zone_name:
       description:
